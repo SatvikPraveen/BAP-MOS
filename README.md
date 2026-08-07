@@ -12,7 +12,7 @@ The framework is evaluated on prostate TRUS and bladder PFUS ultrasound datasets
 
 ## Framework
 
-
+![BAP-MOS framework overview](assets/BAPMOS_Framework.png)
 
 *Overview of the BAP-MOS framework.*
 
