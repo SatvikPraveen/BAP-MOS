@@ -1,0 +1,23 @@
+{
+  "production_version": "bapmos_medsam_pooled",
+  "hpo_version": "bapmos_medsam_pooled_outer_loop",
+  "hpo_suite": "bapmos_bo_medsam_pooled",
+  "objective": "ptv_kfold_val_msd_mm",
+  "exported_at": "2026-07-18T04:00:05.053376+00:00",
+  "datasets": {
+    "pooled": {
+      "selected_path": "experiments/prostate/bapmos/inner_loop/medsam/selected/pooled.yaml",
+      "trial_number": 81,
+      "best_val_msd_mm": 0.18866020662011737,
+      "objective": "ptv_kfold_val_msd_mm",
+      "search_method": "tpe",
+      "params": {
+        "clip_max_mm": 5,
+        "alpha": 0.06891015182429032,
+        "r_min": 11,
+        "window_size": 95,
+        "block_size_batches": 90
+      }
+    }
+  }
+}

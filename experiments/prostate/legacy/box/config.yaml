@@ -1,0 +1,10 @@
+# Legacy CE+Dice, fixed-ring, MSD-only protocol — see experiments/prostate/legacy/README.md.
+# Historical only: kept runnable for curiosity; not required for main BAP-MOS tables.
+# Prostate — box-only prompt baseline.
+# Train via: python -m bapmos.multiorgan.train_sam_multiorgan_decoder_box
+
+inherits: ../../../configs/prostate/common.yaml
+
+prompt_type: box
+run_root: runs/prostate/legacy/box
+wandb_project: bapmos_prostate_box

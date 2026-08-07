@@ -1,0 +1,91 @@
+# BAP-MOS inner loop — production train with kervadec-style loss + composite reward.
+#
+# Required path (merges selected/tpe by default):
+#   python -m bapmos.method.bap_mos_trainer \
+#     --version bapmos --dataset pooled --experiment pooled_seed42
+#
+# Override search export: BAPMOS_SELECTED_SUBDIR=selected/random|greedy|heuristic
+# (bare names like ``tpe`` / ``random`` are also accepted and normalized).
+# Production run dirs are isolated per method:
+#   runs/prostate/bapmos/inner_loop/{tpe,random,greedy,heuristic}/pooled_seed*
+# Placeholder selected/ (generation: 0) is refused unless
+# BAPMOS_ALLOW_PLACEHOLDER_SELECTED=1.
+#
+# Advanced: --config loads this file as-is and does NOT merge selected/.
+
+ablation:
+  version: bapmos
+  id: bapmos
+  # Compose path only: merge selected HPs when bayesian_selected (see above).
+  parameter_source: bayesian_selected
+  description: "BAP-MOS inner loop — kervadec-style loss + composite reward"
+
+run_root: runs/prostate/bapmos/inner_loop/tpe
+
+common:
+  data_root: data/prostate/pooled
+  splits_subdir: splits_stratified
+  sam_checkpoint: models/sam_base/sam_vit_b_01ec64.pth
+  max_epochs: 300
+  batch_size: 1
+  lr: 1.0e-4
+  patience: 40
+  num_workers: 0
+  pixel_spacing: [0.159072, 0.159072]
+
+# Default hyperparameters = searched_clip_scale_organ enqueue baseline.
+# After outer-loop export, prefer compose (defaults to selected/tpe) or
+# BAPMOS_SELECTED_SUBDIR=selected/<method>, or paste exported blocks into this file.
+
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 20.0
+  hd95_lambda: 3.0
+
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.1
+  r_min: 6
+  num_pos: 1
+  num_neg: 3
+  box_jitter_px: 2
+
+bandit:
+  memory: sliding
+  window_size: 50
+  block_size_batches: 50
+  arms: [box, point, both]
+  warmup_blocks_per_arm: 10
+  min_pulls_per_arm: 5
+  probe_size: 20
+  probe_seed: 42
+
+training:
+  loss_mode: kervadec
+  kervadec:
+    alpha_start: 1.0
+    alpha_end: 0.5
+    alpha_schedule: linear
+
+wandb:
+  enabled: true
+  tags: [BAP-MOS, inner_loop, kervadec, composite_fixed_clip, ptv_kfold, prostate]
+
+evaluation:
+  run_test_after_train: false
+  eval_train_metrics: true
+  # Production keeps checkpoints; only outer_loop HPO deletes trial .pth after scoring.
+  cleanup_checkpoints_after_train: false
+  objective_metric: ptv_kfold_msd
+  kfold_n: 5
+  kfold_seed: 42
+
+# Three-seed protocol (docs/SEEDS.md). Experiment name == run folder name:
+#   pooled_seed42, pooled_seed43_rep2, pooled_seed44_rep3
+experiments:
+  - name: pooled_seed42
+    seed: 42
+  - name: pooled_seed43_rep2
+    seed: 43
+  - name: pooled_seed44_rep3
+    seed: 44

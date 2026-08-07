@@ -1,0 +1,77 @@
+# BAP-MOS outer loop (MedSAM) — Optuna trial training on PFUS1 bladder.
+# Objective: Bladder k-fold validation MSD (K=5, seed 42) on the HPO val cohort.
+#
+# Used by: compose_config("bapmos_medsam_outer_loop", "pfus1") via HPO objective.
+#
+#   python -m bapmos.hpo.study_runner init --hpo-suite bapmos_bo_medsam --dataset pfus1
+#   python -m bapmos.hpo.study_runner run --hpo-suite bapmos_bo_medsam --dataset pfus1 --n-trials 1
+
+ablation:
+  version: bapmos_medsam_outer_loop
+  id: bapmos_medsam_outer_loop
+  description: "BAP-MOS outer loop (MedSAM) — composite reward (λ=3) + searched τ + organ-scale ring; Bladder k-fold"
+
+run_root: runs/bladder/bapmos/outer_loop/medsam
+
+common:
+  data_root: data/bladder/pfus1
+  splits_subdir: splits_hpo_tpe_patient_seed4242_p20
+  sam_checkpoint: models/medsam/medsam_vit_b.pth
+  sam_init: medsam
+  # Outer-loop HPO ranking budget; inner loop retrains winners longer (100 / 20).
+  max_epochs: 15
+  batch_size: 128
+  lr: 1.0e-4
+  patience: 4
+  # Same improvement definition as inner (any non-worsening MSD); only length differs.
+  val_msd_min_delta: 0.0
+  num_workers: 8
+  pixel_spacing: [1.0, 1.0]
+
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 20.0
+  hd95_lambda: 3.0
+
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.1
+  r_min: 6
+  num_pos: 1
+  num_neg: 3
+  box_jitter_px: 10
+
+bandit:
+  memory: sliding
+  window_size: 50
+  block_size_batches: 50
+  arms: [box, point, both]
+  # Cheaper than inner (10 / 5) but still faithful — not zero-warmup.
+  warmup_blocks_per_arm: 5
+  min_pulls_per_arm: 3
+  probe_size: 20
+  probe_seed: 42
+
+training:
+  loss_mode: kervadec
+  kervadec:
+    alpha_start: 1.0
+    alpha_end: 0.5
+    alpha_schedule: linear
+
+wandb:
+  enabled: true
+  tags: [BAP-MOS, outer_loop, MedSAM, composite_fixed_clip, searched_clip, scale_organ, sliding_window, hpo, bladder_kfold, pfus1]
+
+evaluation:
+  run_test_after_train: false
+  eval_train_metrics: false
+  cleanup_checkpoints_after_train: true
+  objective_metric: ptv_kfold_msd
+  objective_organ: Bladder
+  kfold_n: 5
+  kfold_seed: 42
+
+experiments:
+  - name: bo_trial_seed42
+    seed: 42

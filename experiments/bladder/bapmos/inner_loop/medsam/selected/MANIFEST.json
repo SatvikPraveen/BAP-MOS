@@ -1,0 +1,23 @@
+{
+  "production_version": "bapmos_medsam",
+  "hpo_version": "bapmos_medsam_outer_loop",
+  "hpo_suite": "bapmos_bo_medsam",
+  "objective": "bladder_kfold_val_msd_mm",
+  "exported_at": "2026-07-23T05:56:56.859570+00:00",
+  "datasets": {
+    "pfus1": {
+      "selected_path": "experiments/bladder/bapmos/inner_loop/medsam/selected/pfus1.yaml",
+      "trial_number": 107,
+      "best_val_msd_mm": 12.436132380595936,
+      "objective": "bladder_kfold_val_msd_mm",
+      "search_method": "tpe",
+      "params": {
+        "clip_max_mm": 23,
+        "alpha": 0.054609672957389055,
+        "r_min": 18,
+        "window_size": 90,
+        "block_size_batches": 40
+      }
+    }
+  }
+}

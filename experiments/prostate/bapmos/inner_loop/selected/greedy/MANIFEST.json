@@ -1,0 +1,23 @@
+{
+  "production_version": "bapmos",
+  "hpo_version": "bapmos_outer_loop_greedy",
+  "hpo_suite": "bapmos_bo_greedy",
+  "objective": "ptv_kfold_val_msd_mm",
+  "exported_at": "2026-07-21T03:49:22.523757+00:00",
+  "datasets": {
+    "pooled": {
+      "selected_path": "experiments/prostate/bapmos/inner_loop/selected/greedy/pooled.yaml",
+      "trial_number": 73,
+      "best_val_msd_mm": 0.19371530657073366,
+      "objective": "ptv_kfold_val_msd_mm",
+      "search_method": "greedy",
+      "params": {
+        "clip_max_mm": 5,
+        "alpha": 0.0833,
+        "r_min": 5,
+        "window_size": 45,
+        "block_size_batches": 85
+      }
+    }
+  }
+}
