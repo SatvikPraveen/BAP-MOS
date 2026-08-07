@@ -1,0 +1,21 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+point,pooled_seed43_rep2,43,simulation,Bladder,0.9927582622250605,0.760991370419541,1.8490322965383388,14.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,simulation,PTV,0.9848332075372267,0.38000038114257945,0.9247900456931473,14.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,simulation,Rectum,0.9787055926635627,0.1619470021985204,0.3689105243897907,14.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,simulation,Urethra,1.0,,,14.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,simulation,all,0.9890742656064625,0.31859756533017014,0.7623805663971179,56.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case1,Bladder,0.9753282940746595,0.7182920446907122,1.5952206591893956,12.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case1,PTV,0.9056452655558868,0.7831212672897919,1.8826850433764715,12.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case1,Rectum,0.9840099113260452,0.2513475358523422,0.550123559742058,12.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case1,Urethra,0.9195212892631063,0.45029897788008416,1.2380694280251126,12.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case1,all,0.9461261900549246,0.5012067223527199,1.2070026111591339,48.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case2,Bladder,0.9513432172632943,1.0097091635940452,2.047734083057189,13.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case2,PTV,0.9613851290360571,0.3580791943272059,0.8486882488986143,13.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case2,Rectum,0.9691106998398944,0.20737749407699646,0.47646897474797906,13.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case2,Urethra,0.9579669216936346,0.2230692885678958,0.49274230223070364,13.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,case2,all,0.95995149195822,0.4110149170785681,0.8975338488115241,52.0,inference_output/prostate/pooled/point/point_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+point,pooled_seed43_rep2,43,pooled,Bladder,0.9264297874621131,0.8731504596556992,1.875865579126637,14.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+point,pooled_seed43_rep2,43,pooled,PTV,0.9384471589886852,0.4921681722605938,1.1817178262803312,30.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+point,pooled_seed43_rep2,43,pooled,Rectum,0.9745267523177442,0.20687676832735177,0.46484479233742726,35.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+point,pooled_seed43_rep2,43,pooled,Urethra,0.8991883635449683,0.34425845620106293,0.8902501026543884,15.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+point,pooled_seed43_rep2,43,pooled,all,0.9438265274300608,0.41908207805820064,0.9716699166788153,94.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"

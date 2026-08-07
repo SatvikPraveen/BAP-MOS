@@ -1,0 +1,10 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+nnunet,pfus1_seed44_rep3,44,pfus1,Pubis,0.721166812395518,15.173813228957352,38.46964840369295,2101.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+nnunet,pfus1_seed44_rep3,44,pfus1,Urethra,0.7093791486427162,12.387735054838972,37.533449910011406,2101.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+nnunet,pfus1_seed44_rep3,44,pfus1,Bladder,0.7226052381855426,21.693581673285454,56.80850180367816,2101.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+nnunet,pfus1_seed44_rep3,44,pfus1,Uterus,0.6680483872966033,46.10093311032255,112.19673038651153,2101.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+nnunet,pfus1_seed44_rep3,44,pfus1,Vagina,0.7190130838186359,19.559356342931423,59.20121592617926,2101.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+nnunet,pfus1_seed44_rep3,44,pfus1,Anus,0.762079624449367,15.799206997351332,47.240478161849445,2101.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+nnunet,pfus1_seed44_rep3,44,pfus1,Rectum,0.6672844803610322,43.696452202132704,116.24213040123067,2101.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+nnunet,pfus1_seed44_rep3,44,pfus1,Levator ani muscle,0.6938958824579615,15.868289462657529,40.352862455750504,2101.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+nnunet,pfus1_seed44_rep3,44,pfus1,all,0.707934082200922,23.784921009059666,63.505627181112985,16808.0,inference_output/bladder/pfus1/nnunet/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv

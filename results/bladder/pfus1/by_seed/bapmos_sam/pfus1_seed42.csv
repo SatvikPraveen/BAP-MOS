@@ -1,0 +1,10 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+bapmos_sam,pfus1_seed42,42,pfus1,Pubis,0.8968877281704949,4.72751399718512,11.64445007551233,2101.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_sam,pfus1_seed42,42,pfus1,Urethra,0.8181667562495961,5.863352371430756,13.624312373038606,2101.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_sam,pfus1_seed42,42,pfus1,Bladder,0.8544191167222829,10.50730019646461,25.658325688398996,2101.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_sam,pfus1_seed42,42,pfus1,Uterus,0.8718721320259115,16.418395664008948,40.75371299372298,2101.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_sam,pfus1_seed42,42,pfus1,Vagina,0.804745829172145,11.506450310680556,29.2973063879681,2101.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_sam,pfus1_seed42,42,pfus1,Anus,0.8756079644449424,7.2182035960453,17.75581369952305,2101.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_sam,pfus1_seed42,42,pfus1,Rectum,0.8478912985436837,15.67902160326358,39.96783565926167,2101.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_sam,pfus1_seed42,42,pfus1,Levator ani muscle,0.8819167185864623,5.0870225483314435,11.486050605972581,2101.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_sam,pfus1_seed42,42,pfus1,all,0.8564384429894398,9.62590753592629,23.773475935424788,16808.0,inference_output/bladder/pfus1/bapmos_sam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv

@@ -1,0 +1,10 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+bapmos_medsam,pfus1_seed42,42,pfus1,Pubis,0.890285241736498,5.016091204039348,11.97547161704044,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed42,42,pfus1,Urethra,0.8047703582413683,6.233346094338265,14.719951721663842,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed42,42,pfus1,Bladder,0.8302632978127286,12.171847930019169,31.164264919959177,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed42,42,pfus1,Uterus,0.8691657791118652,16.315629974450903,40.372308455182605,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed42,42,pfus1,Vagina,0.7880239423367997,12.31885551294979,31.404519912103062,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed42,42,pfus1,Anus,0.8731665410975099,7.186509560268154,17.894870102967705,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed42,42,pfus1,Rectum,0.8473068268617138,15.968398908388998,42.34516891822002,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed42,42,pfus1,Levator ani muscle,0.8927134922998414,4.670473098217007,11.654118938576945,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed42,42,pfus1,all,0.8494619349372906,9.985144035333954,25.191334323214225,16808.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed42_native_redone/metrics_native_redone/summary_metrics.csv

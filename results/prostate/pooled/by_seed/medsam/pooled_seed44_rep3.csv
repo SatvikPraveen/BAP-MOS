@@ -1,0 +1,21 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+medsam,pooled_seed44_rep3,44,simulation,Bladder,0.9966957791261967,0.3252819385454812,0.8612857617117777,14.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/simulation/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,simulation,PTV,0.9842465731635308,0.38995174863635673,0.8377018403206303,14.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/simulation/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,simulation,Rectum,0.9804707451135087,0.15005905117106055,0.3586250318170936,14.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/simulation/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,simulation,Urethra,1.0,,,14.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/simulation/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,simulation,all,0.9903532743508091,0.26192167364234925,0.6011114262427554,56.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/simulation/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case1,Bladder,0.985873026070169,0.4122715356101746,0.8989775631226522,12.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case1/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case1,PTV,0.9662595629093187,0.46317221746468007,1.2143579929166037,12.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case1/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case1,Rectum,0.9819628404582224,0.2839267851143466,0.6469932354708966,12.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case1/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case1,Urethra,0.9497924933275411,0.2177482069765387,0.5043724996824607,12.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case1/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case1,all,0.9709719806913127,0.33232555081234205,0.7976979094500147,48.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case1/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case2,Bladder,0.9757529201569114,0.5263404021079746,1.2130590535556975,13.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case2/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case2,PTV,0.9622437985484777,0.36921363561408543,0.9585013726097329,13.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case2/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case2,Rectum,0.9739526041134875,0.17378223936744555,0.45176152996759544,13.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case2/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case2,Urethra,0.9530996094734102,0.2586127156723636,0.5589967520379662,13.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case2/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,case2,all,0.9662622330730718,0.31991459688846735,0.7804265929761078,52.0,inference_output/prostate/pooled/medsam/medsam_pooled_seed44_rep3/case2/metrics_native_redone/summary_metrics.csv
+medsam,pooled_seed44_rep3,44,pooled,Bladder,0.9620717987606164,0.45066534091664023,1.0479414937511302,14.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+medsam,pooled_seed44_rep3,44,pooled,PTV,0.9627912053443823,0.4036226440759452,0.9990184990150633,30.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+medsam,pooled_seed44_rep3,44,pooled,Rectum,0.9763293820160892,0.20341241909905108,0.4867656010599838,35.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+medsam,pooled_seed44_rep3,44,pooled,Urethra,0.9191869895389883,0.23681831103459033,0.5298638174483633,15.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+medsam,pooled_seed44_rep3,44,pooled,all,0.960766750602426,0.3094649300967762,0.740707331721198,94.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"

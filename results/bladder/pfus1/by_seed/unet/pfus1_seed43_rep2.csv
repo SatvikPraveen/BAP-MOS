@@ -1,0 +1,10 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+unet,pfus1_seed43_rep2,43,pfus1,Pubis,0.7583171458976982,11.824773368454665,29.730010882601594,2101.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+unet,pfus1_seed43_rep2,43,pfus1,Urethra,0.6722110847905355,10.861250593574068,24.49910582423899,2101.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+unet,pfus1_seed43_rep2,43,pfus1,Bladder,0.7862065237823651,15.81310746766484,42.239325774004634,2101.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+unet,pfus1_seed43_rep2,43,pfus1,Uterus,0.7276506507936943,37.85212376994833,104.77484449432552,2101.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+unet,pfus1_seed43_rep2,43,pfus1,Vagina,0.747465577489536,15.42749151594493,46.76571018173371,2101.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+unet,pfus1_seed43_rep2,43,pfus1,Anus,0.7920734561234959,12.054519651237392,34.113736071678595,2101.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+unet,pfus1_seed43_rep2,43,pfus1,Rectum,0.6858260508198145,34.26351328407845,81.21469222612285,2101.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+unet,pfus1_seed43_rep2,43,pfus1,Levator ani muscle,0.7526114610197081,11.818425620787826,30.082361877662297,2101.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+unet,pfus1_seed43_rep2,43,pfus1,all,0.7402952438396059,18.739400658961312,49.17747341654603,16808.0,inference_output/bladder/pfus1/unet/unet_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv

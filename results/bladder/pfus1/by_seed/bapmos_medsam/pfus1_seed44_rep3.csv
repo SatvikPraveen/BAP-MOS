@@ -1,0 +1,10 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,Pubis,0.8904665089571535,4.993031222213149,12.721505070309856,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,Urethra,0.8022162665265703,6.4660424306334985,15.123842473366178,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,Bladder,0.836592488972957,11.743151557898523,28.32405615366342,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,Uterus,0.8792843138298687,15.174918185526273,39.94074695445731,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,Vagina,0.7766570858825093,13.099720933615524,33.55289787277799,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,Anus,0.8762472928139056,7.02182030464816,18.09673259434164,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,Rectum,0.8306265079171994,17.359766198481886,43.66971951792109,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,Levator ani muscle,0.8763846256379141,5.339982871150427,12.671308241053167,2101.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+bapmos_medsam,pfus1_seed44_rep3,44,pfus1,all,0.8460593863172599,10.14980421302093,25.51260110973633,16808.0,inference_output/bladder/pfus1/bapmos_medsam/pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv

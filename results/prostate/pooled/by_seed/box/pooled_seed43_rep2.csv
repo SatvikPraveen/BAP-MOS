@@ -1,0 +1,21 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+box,pooled_seed43_rep2,43,simulation,Bladder,0.9965709841526056,0.3344590834454983,0.8286487585273162,14.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,simulation,PTV,0.9879043978101828,0.291957607693916,0.8129204700754846,14.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,simulation,Rectum,0.9767676914767919,0.17947615788570828,0.4538849745902189,14.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,simulation,Urethra,1.0,,,14.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,simulation,all,0.9903107683598951,0.2410295672587599,0.6353687583893307,56.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case1,Bladder,0.9860236757340193,0.408360700522538,0.8788704715539093,12.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case1,PTV,0.9723274756898671,0.3985809367289559,0.9665883526060125,12.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case1,Rectum,0.9865023729561263,0.21957227546887628,0.5059824676241512,12.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case1,Urethra,0.949785690391629,0.2056036682054046,0.4799500442176846,12.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case1,all,0.9736598036929104,0.28788993587637896,0.6704899098454863,48.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case2,Bladder,0.9788437205052076,0.47171459619440864,1.1603724594530738,13.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case2,PTV,0.9749285579657977,0.26847393370338096,0.6813893346009089,13.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case2,Rectum,0.9679912448194314,0.21492691287023813,0.4910562462089191,13.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case2,Urethra,0.9637450610094233,0.5948723496394643,5.534494798164991,13.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,case2,all,0.9713771460749652,0.3527565369419,1.6335773385631207,52.0,inference_output/prostate/pooled/box/box_pooled_seed43_rep2/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed43_rep2,43,pooled,Bladder,0.9649461609651719,0.4242015875562505,1.008859669854936,14.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+box,pooled_seed43_rep2,43,pooled,PTV,0.9724220843725445,0.314551136808214,0.8064083806448127,30.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+box,pooled_seed43_rep2,43,pooled,Rectum,0.9741903525371775,0.2043650640522181,0.48342937185344437,35.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+box,pooled_seed43_rep2,43,pooled,Urethra,0.9284076051881366,0.38726238620796577,2.8387375960597603,15.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+box,pooled_seed43_rep2,43,pooled,all,0.9649434595884255,0.30145818473384095,1.0406104122668132,94.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"

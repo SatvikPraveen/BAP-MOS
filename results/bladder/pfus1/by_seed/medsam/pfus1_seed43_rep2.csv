@@ -1,0 +1,10 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+medsam,pfus1_seed43_rep2,43,pfus1,Pubis,0.8928320515501634,4.958108598158897,11.738493145544057,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed43_rep2,43,pfus1,Urethra,0.7991991088304569,6.390124540535318,14.515174194908516,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed43_rep2,43,pfus1,Bladder,0.8211871722479266,12.484955451286453,31.38395033097284,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed43_rep2,43,pfus1,Uterus,0.8717284314565911,16.126392866024744,42.1971637088412,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed43_rep2,43,pfus1,Vagina,0.7720578873344641,13.514125199813082,34.94892920755896,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed43_rep2,43,pfus1,Anus,0.8617779301599579,7.8439153428071196,19.65997677292152,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed43_rep2,43,pfus1,Rectum,0.8333314177184784,17.7103680430819,44.70612934040335,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed43_rep2,43,pfus1,Levator ani muscle,0.8742807605144879,5.430707602826072,12.048629232896456,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed43_rep2,43,pfus1,all,0.8407993449765657,10.557337205566698,26.399805741755866,16808.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed43_rep2_native_redone/metrics_native_redone/summary_metrics.csv

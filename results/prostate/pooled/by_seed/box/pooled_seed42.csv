@@ -1,0 +1,21 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+box,pooled_seed42,42,simulation,Bladder,0.9968926226665777,0.3078706518799043,0.7600727223148717,14.0,inference_output/prostate/pooled/box/box_pooled_seed42/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,simulation,PTV,0.9851754049850304,0.36207651669753527,0.8173091562221598,14.0,inference_output/prostate/pooled/box/box_pooled_seed42/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,simulation,Rectum,0.9756910418161839,0.18920638870612097,0.4795689044512869,14.0,inference_output/prostate/pooled/box/box_pooled_seed42/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,simulation,Urethra,1.0,,,14.0,inference_output/prostate/pooled/box/box_pooled_seed42/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,simulation,all,0.989439767366948,0.26886571959962424,0.6412844760983124,56.0,inference_output/prostate/pooled/box/box_pooled_seed42/simulation/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case1,Bladder,0.9865814203821031,0.4074558391624997,0.9407857797938132,12.0,inference_output/prostate/pooled/box/box_pooled_seed42/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case1,PTV,0.970215256662026,0.4330735224458376,1.1454052086525488,12.0,inference_output/prostate/pooled/box/box_pooled_seed42/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case1,Rectum,0.9839767598490109,0.25022995234318096,0.5515924424650577,12.0,inference_output/prostate/pooled/box/box_pooled_seed42/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case1,Urethra,0.9531155233376608,0.20746430682154404,0.46027942617723316,12.0,inference_output/prostate/pooled/box/box_pooled_seed42/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case1,all,0.9734722400577002,0.3087866345864564,0.7385798398802044,48.0,inference_output/prostate/pooled/box/box_pooled_seed42/case1/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case2,Bladder,0.976646080981529,0.5039527146202036,1.1013654996892914,13.0,inference_output/prostate/pooled/box/box_pooled_seed42/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case2,PTV,0.9685136329606766,0.3409635866789111,0.932133468840867,13.0,inference_output/prostate/pooled/box/box_pooled_seed42/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case2,Rectum,0.9633863227383812,0.24706563357332814,0.5444891901637494,13.0,inference_output/prostate/pooled/box/box_pooled_seed42/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case2,Urethra,0.9679592207927386,0.1701370867671451,0.3931478814601895,13.0,inference_output/prostate/pooled/box/box_pooled_seed42/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,case2,all,0.9691263143683315,0.31156523295040495,0.7469344969172436,52.0,inference_output/prostate/pooled/box/box_pooled_seed42/case2/metrics_native_redone/summary_metrics.csv
+box,pooled_seed42,42,pooled,Bladder,0.9637052010483715,0.434364593902224,0.9823514131389219,14.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+box,pooled_seed42,42,pooled,PTV,0.9675238659407844,0.3749304464145763,0.9616676969987593,30.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+box,pooled_seed42,42,pooled,Rectum,0.9711833685489617,0.22831308748280663,0.5246662072799251,35.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+box,pooled_seed42,42,pooled,Urethra,0.9347237433571688,0.19004493746282453,0.42895137197594607,15.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+box,pooled_seed42,42,pooled,all,0.9630836472603397,0.29968776415860665,0.7170270056206836,94.0,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"

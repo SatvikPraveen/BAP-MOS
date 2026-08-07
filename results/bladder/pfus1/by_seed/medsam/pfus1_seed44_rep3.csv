@@ -1,0 +1,10 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+medsam,pfus1_seed44_rep3,44,pfus1,Pubis,0.9015733779542286,4.557985672255583,11.68172905969009,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed44_rep3,44,pfus1,Urethra,0.7951706116207995,6.60095176474095,15.274844477214131,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed44_rep3,44,pfus1,Bladder,0.8255168107668058,12.20237566827485,30.221482286622166,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed44_rep3,44,pfus1,Uterus,0.8669212693574403,16.57947647378148,41.11128572955347,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed44_rep3,44,pfus1,Vagina,0.7796914599791216,13.19409898109642,36.172131474659444,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed44_rep3,44,pfus1,Anus,0.856832741347881,8.034101575382673,19.193197588572712,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed44_rep3,44,pfus1,Rectum,0.8292012442596566,17.72288627991268,46.21437593699432,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed44_rep3,44,pfus1,Levator ani muscle,0.8725489861679362,5.538582557513895,11.817494266458105,2101.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
+medsam,pfus1_seed44_rep3,44,pfus1,all,0.8409320626817338,10.553807371619815,26.460817602470552,16808.0,inference_output/bladder/pfus1/medsam/medsam_pfus1_seed44_rep3_native_redone/metrics_native_redone/summary_metrics.csv
