@@ -160,7 +160,7 @@ BAP-MOS is evaluated on:
 
 The datasets are not redistributed with this repository.
 
-See `[docs/PREPROCESS.md](docs/PREPROCESS.md)` and the dataset-specific README files under `[data/](data/)` for preparation instructions.
+See [`docs/PREPROCESS.md`](docs/PREPROCESS.md) and the dataset-specific README files under [`data/`](data/) for preparation instructions.
 
 ## Further documentation
 
