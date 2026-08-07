@@ -42,12 +42,16 @@ Thumbs.db
 .env.*
 !.env.example
 
-# --- Foundation weights (download; see docs/WEIGHTS.md) ---
+# --- Foundation weights (download locally; see docs/WEIGHTS.md) ---
+# Do not commit SAM/MedSAM (or other) checkpoints. Ship only models/**/.gitkeep
+# so the directory layout exists after clone.
 *.pth
 *.pt
 *.ckpt
 *.onnx
-# keep empty layout dirs
+*.safetensors
+models/**
+!models/**/
 !models/**/.gitkeep
 
 # --- Training / inference / logging (not shipped) ---
