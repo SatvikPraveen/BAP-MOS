@@ -1,0 +1,22 @@
+# BAPMOS — local CPU workstation (analysis, preprocessing, light tests)
+#
+# Create and use a virtual environment::
+#
+#   python3.10 -m venv .venv
+#   source .venv/bin/activate          # Windows: .venv\Scripts\activate
+#   pip install --upgrade pip
+#   pip install -r requirements_cpu.txt
+#   export PYTHONPATH="$(pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
+#
+# PyTorch is installed from the official CPU wheel index (no CUDA). On your
+# HPC cluster, use CUDA-enabled builds instead, e.g.::
+#
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+#   (pick the CUDA version your cluster provides; see https://pytorch.org/get-started/locally/)
+#
+# Same package set as ``requirements.txt``, plus the CPU index line below.
+# For notebook / Plotly / PyVista extras, also install ``requirements_dev.txt``.
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+-r requirements.txt

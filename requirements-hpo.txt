@@ -1,0 +1,14 @@
+# BAPMOS — optional dependencies for outer-loop Optuna HPO
+#
+# Install into the training env after core requirements::
+#
+#   pip install -r requirements-hpo.txt
+#   export PYTHONPATH="$(pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
+#
+# Outer-loop study entrypoint::
+#
+#   python -m bapmos.hpo.study_runner --help
+
+-r requirements.txt
+
+optuna>=3.6.0
