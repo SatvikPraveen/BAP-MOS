@@ -1,0 +1,39 @@
+# Shared training defaults for PFUS1 bladder (trainer hyperparams).
+# Data: data/bladder/pfus1/
+# Checkpoint: fold-balanced validation Bladder MSD (K=5, seed 42).
+#
+# Reward and ring geometry for BAP-MOS are governed by outer-loop search
+# (see experiments/bladder/bapmos/ and configs/common/protocol.yaml).
+# ring_width here is a legacy/pre-search default; composite reward and searched
+# clip/scale_organ parameters (clip_max_mm, alpha, r_min, window_size,
+# block_size_batches) are set in the HPO / outer-loop configs.
+# Production inner_loop / baselines: patience 20, max_epochs 100 (this file).
+# Outer-loop HPO ranking budget: max_epochs 15 / patience 4 (see experiments/bladder/bapmos/outer_loop/).
+# checkpoint_objective_organ mirrors checkpoint_objective.objective_organ for
+# older readers; keep both in sync.
+
+run_name: pfus1_seed42
+data_root: data/bladder/pfus1
+splits_subdir: splits_patient_70_15_15_seed42
+sam_checkpoint: models/sam_base/sam_vit_b_01ec64.pth
+max_epochs: 100
+batch_size: 128
+lr: 1.0e-4
+seed: 42
+patience: 20
+box_jitter_px: 10
+num_pos_per_organ: 1
+num_neg_points: 3
+ring_width: 20
+num_workers: 4
+pixel_spacing: [1.0, 1.0]
+checkpoint_objective:
+  metric: ptv_kfold_msd
+  objective_organ: Bladder
+  kfold_n: 5
+  kfold_seed: 42
+checkpoint_metric: ptv_kfold_msd
+checkpoint_objective_organ: Bladder
+checkpoint_mode: min
+run_test_after_train: false
+wandb_project: bapmos_bladder
