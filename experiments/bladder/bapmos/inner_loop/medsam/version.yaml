@@ -1,0 +1,83 @@
+# BAP-MOS inner loop on PFUS1 bladder — MedSAM backbone.
+# Docs: docs/INNER_OUTER_LOOP.md
+#
+# Required (merges selected/pfus1.yaml):
+#   python -m bapmos.method.bap_mos_trainer \
+#     --version bapmos_medsam --dataset pfus1 --experiment pfus1_seed42
+#
+# Advanced: --config loads this file as-is (skips selected/).
+
+ablation:
+  version: bapmos_medsam
+  id: bapmos_medsam
+  parameter_source: bayesian_selected
+  description: "BAP-MOS inner loop (PFUS1 MedSAM) — kervadec-style + composite"
+
+run_root: runs/bladder/bapmos/inner_loop/medsam
+
+common:
+  sam_checkpoint: models/medsam/medsam_vit_b.pth
+  sam_init: medsam
+  data_root: data/bladder/pfus1
+  splits_subdir: splits_patient_70_15_15_seed42
+  # Precompute embeddings into image_embedding_dir (see docs/PREPROCESS.md / docs/RUNNING.md)
+  use_cached_image_embeddings: true
+  image_embedding_dir: data/bladder/pfus1/sam_embeddings/medsam_vit_b
+  patience: 20
+  max_epochs: 100
+  batch_size: 128
+  lr: 1.0e-4
+  num_workers: 8
+  pixel_spacing: [1.0, 1.0]
+
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 20.0
+  hd95_lambda: 3.0
+
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.1
+  r_min: 6
+  num_pos: 1
+  num_neg: 3
+  box_jitter_px: 10
+
+bandit:
+  memory: sliding
+  window_size: 50
+  block_size_batches: 50
+  arms: [box, point, both]
+  warmup_blocks_per_arm: 10
+  min_pulls_per_arm: 5
+  probe_size: 20
+  probe_seed: 42
+
+training:
+  loss_mode: kervadec
+  kervadec:
+    alpha_start: 1.0
+    alpha_end: 0.5
+    alpha_schedule: linear
+
+evaluation:
+  run_test_after_train: false
+  # Val-only metrics (like nnU-Net boundary); early-stop / best ckpt already use val MSD.
+  eval_train_metrics: false
+  # Production keeps checkpoints; only outer_loop HPO deletes trial .pth after scoring.
+  cleanup_checkpoints_after_train: false
+  objective_metric: ptv_kfold_msd
+  objective_organ: Bladder
+  kfold_n: 5
+  kfold_seed: 42
+
+wandb:
+  tags: [BAP-MOS, inner_loop, kervadec, bladder, pfus1, medsam]
+
+experiments:
+  - name: pfus1_seed42
+    seed: 42
+  - name: pfus1_seed43_rep2
+    seed: 43
+  - name: pfus1_seed44_rep3
+    seed: 44

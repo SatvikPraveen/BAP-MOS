@@ -1,0 +1,23 @@
+{
+  "production_version": "bapmos",
+  "hpo_version": "bapmos_outer_loop_random",
+  "hpo_suite": "bapmos_bo_random",
+  "objective": "ptv_kfold_val_msd_mm",
+  "exported_at": "2026-07-20T21:24:45.642708+00:00",
+  "datasets": {
+    "pooled": {
+      "selected_path": "experiments/prostate/bapmos/inner_loop/selected/random/pooled.yaml",
+      "trial_number": 47,
+      "best_val_msd_mm": 0.20507596197283115,
+      "objective": "ptv_kfold_val_msd_mm",
+      "search_method": "random",
+      "params": {
+        "clip_max_mm": 17,
+        "alpha": 0.07559371343116703,
+        "r_min": 6,
+        "window_size": 25,
+        "block_size_batches": 65
+      }
+    }
+  }
+}

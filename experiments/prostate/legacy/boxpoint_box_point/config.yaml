@@ -1,0 +1,47 @@
+# Legacy CE+Dice, fixed-ring, MSD-only protocol — see experiments/prostate/legacy/README.md.
+# Historical only: kept runnable for curiosity; not required for main BAP-MOS tables.
+# Train via: python -m bapmos.legacy.optimization.trainer --config <this> --experiment <name>
+# Three-way prompt mix: box-only, point-only, box+point.
+# Canonical set: 1:1:1, 1:5:1, 2:3:5, 5:1:1 only.
+wandb_project: bapmos_prostate_boxpoint_box_point
+
+common:
+  data_root: data/prostate/pooled
+  splits_subdir: splits_stratified
+  sam_checkpoint: models/sam_base/sam_vit_b_01ec64.pth
+  max_epochs: 300
+  batch_size: 1
+  lr: 1.0e-4
+  seed: 42
+  patience: 40
+  num_pos_per_organ: 1
+  num_neg_points: 3
+  ring_width: 20
+  num_workers: 4
+  pixel_spacing: [0.159072, 0.159072]
+  checkpoint_objective:
+    metric: ptv_kfold_msd
+    kfold_n: 5
+    kfold_seed: 42
+  checkpoint_metric: ptv_kfold_msd
+  checkpoint_mode: min
+  run_test_after_train: false
+  run_root: runs/prostate/legacy/boxpoint_box_point
+
+experiments:
+  - name: ratio_1_1_1_balanced
+    box_weight: 1
+    point_weight: 1
+    both_weight: 1
+  - name: ratio_1_5_1_point_dom
+    box_weight: 1
+    point_weight: 5
+    both_weight: 1
+  - name: ratio_2_3_5_prof
+    box_weight: 2
+    point_weight: 3
+    both_weight: 5
+  - name: ratio_5_1_1_box_dom
+    box_weight: 5
+    point_weight: 1
+    both_weight: 1

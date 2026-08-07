@@ -1,0 +1,85 @@
+# BAP-MOS inner loop — pooled prostate with MedSAM backbone.
+# Sibling ``../version.yaml`` is Meta SAM (main paper path).
+#
+# Outer search (independent of Meta SAM TPE):
+#   python -m bapmos.hpo.study_runner run \
+#     --hpo-suite bapmos_bo_medsam_pooled --dataset pooled --n-trials 1
+# Export → selected/pooled.yaml under this directory.
+#
+# Required production (merges selected/):
+#   python -m bapmos.method.bap_mos_trainer \
+#     --version bapmos_medsam_pooled --dataset pooled --experiment pooled_seed42 \
+#     --run-name pooled_seed42
+#
+# Advanced: --config loads this file as-is (skips selected/).
+
+ablation:
+  version: bapmos_medsam_pooled
+  id: bapmos_medsam_pooled
+  parameter_source: bayesian_selected
+  description: "BAP-MOS inner loop (pooled MedSAM) — kervadec-style + composite"
+
+run_root: runs/prostate/bapmos/inner_loop/medsam
+
+common:
+  data_root: data/prostate/pooled
+  splits_subdir: splits_stratified
+  sam_checkpoint: models/medsam/medsam_vit_b.pth
+  sam_init: medsam
+  max_epochs: 300
+  batch_size: 1
+  lr: 1.0e-4
+  patience: 40
+  num_workers: 0
+  pixel_spacing: [0.159072, 0.159072]
+
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 20.0
+  hd95_lambda: 3.0
+
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.1
+  r_min: 6
+  num_pos: 1
+  num_neg: 3
+  box_jitter_px: 2
+
+bandit:
+  memory: sliding
+  window_size: 50
+  block_size_batches: 50
+  arms: [box, point, both]
+  warmup_blocks_per_arm: 10
+  min_pulls_per_arm: 5
+  probe_size: 20
+  probe_seed: 42
+
+training:
+  loss_mode: kervadec
+  kervadec:
+    alpha_start: 1.0
+    alpha_end: 0.5
+    alpha_schedule: linear
+
+wandb:
+  enabled: true
+  tags: [BAP-MOS, inner_loop, kervadec, medsam, prostate]
+
+evaluation:
+  run_test_after_train: false
+  eval_train_metrics: true
+  # Production keeps checkpoints; only outer_loop HPO deletes trial .pth after scoring.
+  cleanup_checkpoints_after_train: false
+  objective_metric: ptv_kfold_msd
+  kfold_n: 5
+  kfold_seed: 42
+
+experiments:
+  - name: pooled_seed42
+    seed: 42
+  - name: pooled_seed43_rep2
+    seed: 43
+  - name: pooled_seed44_rep3
+    seed: 44

@@ -1,0 +1,31 @@
+selection_meta:
+  study_name: bapmos_outer_loop_random_pooled_ptv_kfold_sclip
+  study_db: optuna_studies/prostate_bapmos_outer_loop_random/pooled_ptv_kfold_sclip.db
+  trial_number: 47
+  objective: ptv_kfold_val_msd_mm
+  metric_note: "PTV k-fold mean MSD (5-fold, full-res). Search: BO-searched fixed\
+    \ clip \u03C4 + organ-scale ring (composite_fixed_clip, \u03BB=3; 5-D paper search\
+    \ box)"
+  value: 0.20507596197283115
+  exported_at: '2026-07-20T21:24:45.642708+00:00'
+  generation: 1
+  search_method: random
+  hpo_suite: bapmos_bo_random
+  params:
+    clip_max_mm: 17
+    alpha: 0.07559371343116703
+    r_min: 6
+    window_size: 25
+    block_size_batches: 65
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 17.0
+  hd95_lambda: 3.0
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.07559371343116703
+  r_min: 6
+bandit:
+  memory: sliding
+  window_size: 25
+  block_size_batches: 65

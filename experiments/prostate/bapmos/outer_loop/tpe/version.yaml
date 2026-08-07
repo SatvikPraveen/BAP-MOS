@@ -1,0 +1,73 @@
+# BAP-MOS outer loop — TPE (main) (prostate pooled).
+# Search: composite reward (λ=3) + searched clip τ + organ-scale ring.
+# Objective: PTV k-fold validation MSD (K=5, seed 42).
+#
+# Used by: compose_config("bapmos_outer_loop", "pooled") via HPO suite `bapmos_bo`.
+#
+#   python -m bapmos.hpo.study_runner init --hpo-suite bapmos_bo --dataset pooled
+#   python -m bapmos.hpo.study_runner run --hpo-suite bapmos_bo --dataset pooled --n-trials 1
+# Export best → experiments/prostate/bapmos/inner_loop/selected/tpe/pooled.yaml
+
+ablation:
+  version: bapmos_outer_loop
+  id: bapmos_outer_loop
+  description: "BAP-MOS outer loop (tpe) — composite reward (λ=3) + searched τ + organ-scale ring; PTV k-fold"
+
+run_root: runs/prostate/bapmos/outer_loop/tpe
+
+common:
+  data_root: data/prostate/pooled
+  splits_subdir: splits_stratified
+  sam_checkpoint: models/sam_base/sam_vit_b_01ec64.pth
+  max_epochs: 100
+  batch_size: 1
+  lr: 1.0e-4
+  patience: 15
+  num_workers: 0
+  pixel_spacing: [0.159072, 0.159072]
+
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 20.0
+  hd95_lambda: 3.0
+
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.1
+  r_min: 6
+  num_pos: 1
+  num_neg: 3
+  box_jitter_px: 2
+
+bandit:
+  memory: sliding
+  window_size: 50
+  block_size_batches: 50
+  arms: [box, point, both]
+  warmup_blocks_per_arm: 10
+  min_pulls_per_arm: 5
+  probe_size: 20
+  probe_seed: 42
+
+training:
+  loss_mode: kervadec
+  kervadec:
+    alpha_start: 1.0
+    alpha_end: 0.5
+    alpha_schedule: linear
+
+evaluation:
+  run_test_after_train: false
+  eval_train_metrics: false
+  # After Optuna records val MSD, delete trial *.pth (search does not need weights).
+  cleanup_checkpoints_after_train: true
+  objective_metric: ptv_kfold_msd
+  kfold_n: 5
+  kfold_seed: 42
+
+experiments:
+  - name: bo_trial_seed42
+    seed: 42
+wandb:
+  enabled: true
+  tags: [BAP-MOS, outer_loop, tpe, composite_fixed_clip, searched_clip, scale_organ, sliding_window, hpo, ptv_kfold, pooled]
