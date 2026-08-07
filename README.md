@@ -12,18 +12,19 @@ The framework is evaluated on prostate TRUS and bladder PFUS ultrasound datasets
 
 ## Framework
 
-![BAP-MOS framework overview](assets/BAPMOS_Framework.png)
+BAP-MOS framework overview
 
 *Overview of the BAP-MOS framework.*
 
 ## Main results
 
 Mean ± std over three training seeds (42, 43, 44).
-Prostate distance metrics (MSD and HD95) are in millimeters; PFUS1 distances use pixel-equivalent units (see [`docs/RESULTS.md`](docs/RESULTS.md)).
+Prostate distance metrics (MSD and HD95) are in millimeters; PFUS1 distances use pixel-equivalent units (see `[docs/RESULTS.md](docs/RESULTS.md)`).
 
-See [`docs/RESULTS.md`](docs/RESULTS.md) for detailed results and per-seed outputs.
+See `[docs/RESULTS.md](docs/RESULTS.md)` for detailed results and per-seed outputs.
 
 ### Prostate TRUS (pooled test)
+
 
 | Method               | Dice ↑            | HD95 (mm) ↓       | MSD (mm) ↓        |
 | -------------------- | ----------------- | ----------------- | ----------------- |
@@ -34,14 +35,17 @@ See [`docs/RESULTS.md`](docs/RESULTS.md) for detailed results and per-seed outpu
 | **BAP-MOS (SAM)**    | **0.982 ± 0.001** | **0.482 ± 0.016** | **0.204 ± 0.023** |
 | **BAP-MOS (MedSAM)** | **0.979 ± 0.006** | **0.577 ± 0.032** | **0.229 ± 0.013** |
 
-### Bladder PFUS1
 
-### External PFUS1 generalization
 
-| Method | Dice ↑ | HD95 (px) ↓ | MSD (px) ↓ |
-|---|---:|---:|---:|
-| FPN | 0.710 | — | — |
+
+### External Bladder PFUS1 generalization
+
+
+| Method               | Dice ↑            | HD95 (px) ↓       | MSD (px) ↓        |
+| -------------------- | ----------------- | ----------------- | ----------------- |
+| FPN                  | 0.710             | —                 | —                 |
 | **BAP-MOS (MedSAM)** | **0.849 ± 0.007** | **10.062 ± 0.55** | **5.034 ± 0.015** |
+
 
 Distance metrics for the external PFUS1 pelvic-floor dataset are reported
 in pixel-equivalent units.
@@ -160,14 +164,15 @@ BAP-MOS is evaluated on:
 
 The datasets are not redistributed with this repository.
 
-See [`docs/PREPROCESS.md`](docs/PREPROCESS.md) and the dataset-specific README files under [`data/`](data/) for preparation instructions.
+See `[docs/PREPROCESS.md](docs/PREPROCESS.md)` and the dataset-specific README files under `[data/](data/)` for preparation instructions.
 
 ## Further documentation
 
-- Training protocol and optimization: [`docs/INNER_OUTER_LOOP.md`](docs/INNER_OUTER_LOOP.md)
-- Experiment ladder and search ablations: [`docs/EXPERIMENT_LADDER.md`](docs/EXPERIMENT_LADDER.md), [`docs/SEARCH_METHODS.md`](docs/SEARCH_METHODS.md)
-- Inference, result collation, and paper-table generation: [`docs/RESULTS.md`](docs/RESULTS.md)
-- Runtime artifact layout (`runs/`, `inference_output/`, `results/`): [`docs/RUNTIME_LAYOUT.md`](docs/RUNTIME_LAYOUT.md)
+- Training protocol and optimization: `[docs/INNER_OUTER_LOOP.md](docs/INNER_OUTER_LOOP.md)`
+- Experiment ladder and search ablations: `[docs/EXPERIMENT_LADDER.md](docs/EXPERIMENT_LADDER.md)`, `[docs/SEARCH_METHODS.md](docs/SEARCH_METHODS.md)`
+- Inference, result collation, and paper-table generation: `[docs/RESULTS.md](docs/RESULTS.md)`
+- Runtime artifact layout (`runs/`, `inference_output/`, `results/`): `[docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md)`
+
 
 
 ## Citation
