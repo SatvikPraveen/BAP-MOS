@@ -1,0 +1,34 @@
+# Shared training defaults for pooled prostate (trainer hyperparams).
+# Train/val = simulation ∪ case1 ∪ case2 (built under data/prostate/pooled/).
+# Test = per-site lists under data/prostate/pooled/site_tests/.
+#
+# Reward and ring geometry for BAP-MOS are governed by outer-loop search
+# (see experiments/prostate/bapmos/outer_loop/* and configs/common/protocol.yaml).
+# ring_width here is a legacy/pre-search default; composite reward and searched
+# clip/scale_organ parameters (clip_max_mm, alpha, r_min, window_size,
+# block_size_batches) are set in the HPO / outer-loop configs.
+# pixel_spacing is the pooled clinical spacing (mm/px), not a protocol hyperparam.
+
+run_name: pooled_seed42
+data_root: data/prostate/pooled
+splits_subdir: splits_stratified
+sam_checkpoint: models/sam_base/sam_vit_b_01ec64.pth
+max_epochs: 300
+batch_size: 1
+lr: 1.0e-4
+seed: 42
+patience: 40
+box_jitter_px: 2
+num_pos_per_organ: 1
+num_neg_points: 3
+ring_width: 20
+num_workers: 4
+pixel_spacing: [0.159072, 0.159072]
+checkpoint_objective:
+  metric: ptv_kfold_msd
+  kfold_n: 5
+  kfold_seed: 42
+checkpoint_metric: ptv_kfold_msd
+checkpoint_mode: min
+run_test_after_train: false
+wandb_project: bapmos_prostate
