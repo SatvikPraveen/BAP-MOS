@@ -1,0 +1,78 @@
+# BAPMOS — publishable tree ignores local/runtime artifacts.
+# Keep: src/, configs/, experiments/, docs/ (except MIGRATION.md), tests/,
+#       scripts/{bapmos.sh,populate_*.sh,_populate_*.sh}, requirements*.txt,
+#       results/ (collated CSVs), data/*/README.md, models/**/.gitkeep
+
+# --- Internal-only docs (not for public readers) ---
+docs/MIGRATION.md
+docs/REPO_MAP.md
+
+# --- Private cluster execution harness (not shipped) ---
+scripts/BAPMOS_run/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# --- Secrets / local env ---
+.env
+.env.*
+!.env.example
+
+# --- Foundation weights (download; see docs/WEIGHTS.md) ---
+*.pth
+*.pt
+*.ckpt
+*.onnx
+# keep empty layout dirs
+!models/**/.gitkeep
+
+# --- Training / inference / logging (not shipped) ---
+runs/
+inference_output/
+wandb/
+logs/
+optuna_studies/
+results_scratch/
+
+# --- Local data corpora (not shipped; keep READMEs) ---
+# Symlinks or real trees under data/* except documentation
+data/prostate/**
+!data/prostate/README.md
+data/bladder/**
+!data/bladder/README.md
+
+# --- Results: ship by_seed/ + combined/*_mean_std.csv; ignore scratch/QA ---
+results/**/_tmp_*/
+results/**/_tmp_*
+results/**/*audit*
+results/**/*status*
+
+# --- Notebooks / misc local ---
+.ipynb_checkpoints/
+*.log
+debug.log
+debug-internal.log
