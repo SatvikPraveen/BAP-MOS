@@ -1,0 +1,31 @@
+selection_meta:
+  study_name: bapmos_medsam_outer_loop_pfus1_bladder_kfold_sclip
+  study_db: optuna_studies/bladder_bapmos_medsam_outer_loop/pfus1_bladder_kfold_sclip.db
+  trial_number: 107
+  objective: bladder_kfold_val_msd_mm
+  metric_note: "Bladder k-fold mean MSD (5-fold, PFUS1, pixel units). Search: BO-searched\
+    \ fixed clip \u03C4 + organ-scale ring (composite_fixed_clip, \u03BB=3; 5-D paper\
+    \ search box)"
+  value: 12.436132380595936
+  exported_at: '2026-07-23T05:56:56.859570+00:00'
+  generation: 1
+  search_method: tpe
+  hpo_suite: bapmos_bo_medsam
+  params:
+    clip_max_mm: 23
+    alpha: 0.054609672957389055
+    r_min: 18
+    window_size: 90
+    block_size_batches: 40
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 23.0
+  hd95_lambda: 3.0
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.054609672957389055
+  r_min: 18
+bandit:
+  memory: sliding
+  window_size: 90
+  block_size_batches: 40

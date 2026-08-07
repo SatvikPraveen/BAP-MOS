@@ -1,0 +1,23 @@
+{
+  "production_version": "bapmos",
+  "hpo_version": "bapmos_outer_loop",
+  "hpo_suite": "bapmos_bo",
+  "objective": "ptv_kfold_val_msd_mm",
+  "exported_at": "2026-07-18T01:44:18.015903+00:00",
+  "datasets": {
+    "pooled": {
+      "selected_path": "experiments/prostate/bapmos/inner_loop/selected/tpe/pooled.yaml",
+      "trial_number": 52,
+      "best_val_msd_mm": 0.1982796098063019,
+      "objective": "ptv_kfold_val_msd_mm",
+      "search_method": "tpe",
+      "params": {
+        "clip_max_mm": 11,
+        "alpha": 0.1210367595416792,
+        "r_min": 16,
+        "window_size": 60,
+        "block_size_batches": 65
+      }
+    }
+  }
+}

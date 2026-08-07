@@ -1,0 +1,53 @@
+# Legacy CE+Dice, fixed-ring, MSD-only protocol — see experiments/prostate/legacy/README.md.
+# Historical only: kept runnable for curiosity; not required for main BAP-MOS tables.
+# Train via: python -m bapmos.legacy.optimization.trainer --config <this> --experiment <name>
+# Per-organ UCB1 bandit.
+wandb_project: bapmos_prostate_ucb1_per_organ
+
+common:
+  data_root: data/prostate/pooled
+  splits_subdir: splits_stratified
+  sam_checkpoint: models/sam_base/sam_vit_b_01ec64.pth
+  max_epochs: 300
+  batch_size: 1
+  lr: 1.0e-4
+  seed: 42
+  patience: 40
+  num_pos_per_organ: 1
+  num_neg_points: 3
+  ring_width: 20
+  num_workers: 4
+  pixel_spacing: [0.159072, 0.159072]
+  checkpoint_objective:
+    metric: ptv_kfold_msd
+    kfold_n: 5
+    kfold_seed: 42
+  checkpoint_metric: ptv_kfold_msd
+  checkpoint_mode: min
+  run_test_after_train: false
+  run_root: runs/prostate/legacy/ucb1_per_organ
+
+bandit:
+  algorithm: ucb1
+  arms: [box, point, both]
+  reward_metric: val_msd_mm
+  reward_mode: absolute
+  reward_transform: negate
+  reward_aggregation: per_organ
+  exploration_constant: 2.0
+  block_size_batches: 50
+  probe_size: 10
+  probe_seed: 42
+  warmup_blocks_per_arm: 10
+  min_pulls_per_arm: 5
+  reward_clip_max_msd_mm: 20.0
+  log_arm_selection: true
+  scope: per_organ
+
+experiments:
+  - name: ucb1_per_organ_seed42
+    seed: 42
+  - name: ucb1_per_organ_seed43_rep2
+    seed: 43
+  - name: ucb1_per_organ_seed44_rep3
+    seed: 44

@@ -1,0 +1,23 @@
+{
+  "production_version": "bapmos",
+  "hpo_version": "bapmos_outer_loop_heuristic",
+  "hpo_suite": "bapmos_bo_heuristic",
+  "objective": "ptv_kfold_val_msd_mm",
+  "exported_at": "2026-07-20T21:24:45.642531+00:00",
+  "datasets": {
+    "pooled": {
+      "selected_path": "experiments/prostate/bapmos/inner_loop/selected/heuristic/pooled.yaml",
+      "trial_number": 36,
+      "best_val_msd_mm": 0.20410643991949545,
+      "objective": "ptv_kfold_val_msd_mm",
+      "search_method": "heuristic",
+      "params": {
+        "clip_max_mm": 5,
+        "alpha": 0.1,
+        "r_min": 8,
+        "window_size": 50,
+        "block_size_batches": 50
+      }
+    }
+  }
+}
