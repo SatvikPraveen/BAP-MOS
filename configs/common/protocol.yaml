@@ -1,0 +1,39 @@
+# Shared BAP-MOS protocol defaults
+#
+# Merged as the lowest-priority floor by ``bapmos.method.config_utils.compose_config``
+# (``checkpoint_objective`` → ``evaluation.objective_metric`` / ``kfold_*``).
+# Suite / site / selected YAMLs override these values.
+#
+# Loss policy:
+# - BAP-MOS method (SAM or MedSAM init via ``bapmos.method``): ``loss_mode: kervadec``
+# - External baselines / multiorgan SAM box|points / legacy fixed-ratio prompting
+#   (box, point, box_point, boxpoint_box_point) / legacy policies: regional ``ce_dice`` only
+#
+# Final reproduction path (inner loop / paper method, after outer-loop search):
+# - decoder loss: scheduled CE+Dice + boundary (loss_mode: kervadec)
+# - bandit reward: composite_fixed_clip (MSD + λ·HD95, λ=3)
+# - checkpoint + TPE objective: validation MSD (ptv_kfold_msd; Bladder on PFUS1)
+# - training seeds: ALWAYS three — 42 (primary), 43 (rep2), 44 (rep3)
+#   run names: pooled_seed42 / pooled_seed43_rep2 / pooled_seed44_rep3
+#   (bladder: pfus1_seed42 / pfus1_seed43_rep2 / pfus1_seed44_rep3). See docs/SEEDS.md.
+#
+# Historical policy/prompt ablations under experiments/*/legacy/ do NOT use this file
+# for reward/ring/loss. Historical comparison runs intended for reporting are intended
+# to use the same three training seeds (see docs/SEEDS.md).
+
+training:
+  loss_mode: kervadec
+  kervadec:
+    alpha_start: 1.0
+    alpha_end: 0.5
+    alpha_schedule: linear
+
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 20.0
+  hd95_lambda: 3.0
+
+checkpoint_objective:
+  metric: ptv_kfold_msd
+  kfold_n: 5
+  kfold_seed: 42
