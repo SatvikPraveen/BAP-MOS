@@ -1,0 +1,31 @@
+# BAPMOS — nnU-Net v2 baseline — DEDICATED env recommended (not the main SAM env).
+#
+# On HPC nodes, install PyTorch with a CUDA build that matches the cluster driver
+# *before* or *after* nnunetv2. ``pip install nnunetv2`` alone often pulls a torch
+# build that fails at train time with "driver too old" / cuda.is_available() == False.
+#
+# Recommended pattern (adjust cuXXX to your site)::
+#
+#   conda create -n nnunet python=3.10 -y
+#   conda activate nnunet
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+#   pip install -r requirements_nnunet.txt
+#   wandb login
+#   python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+#
+# On a GPU compute node, the last line must print True. If False, reinstall torch::
+#
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128 \
+#     --force-reinstall
+#
+# Entry points live under ``bapmos.external_baselines.nnunet2d``
+# (run with ``PYTHONPATH=src`` from the BAPMOS/ root).
+# See: https://github.com/MIC-DKFZ/nnUNet
+
+nnunetv2>=2.0
+pandas>=2.0
+wandb>=0.16
+opencv-python-headless>=4.8
+numpy>=1.24
+PyYAML>=6.0
+tqdm>=4.66
