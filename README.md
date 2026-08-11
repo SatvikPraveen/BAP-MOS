@@ -181,6 +181,7 @@ See `[docs/PREPROCESS.md](docs/PREPROCESS.md)` and the dataset-specific README f
 
 If you find BAP-MOS useful in your research, please cite:
 
+```bibtex
 @misc{praveen2026bapmosbanditbasedadaptiveprompting,
       title={BAP-MOS: Bandit-Based Adaptive Prompting for Boundary-Sensitive Multi-Organ Segmentation}, 
       author={Satvik Praveen and Shengji Jin and Ahmed Lamidi and Xin Qian and Yi Sheng},
@@ -190,6 +191,7 @@ If you find BAP-MOS useful in your research, please cite:
       primaryClass={cs.CV},
       url={https://arxiv.org/abs/2608.08191}, 
 }
+```
 
 
 ## License
