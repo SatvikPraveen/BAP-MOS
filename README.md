@@ -2,7 +2,9 @@
 
 **BAP-MOS: Bandit-Based Adaptive Prompting for Boundary-Sensitive Multi-Organ Segmentation**
 
-**Authors:** Satvik Praveen, Shengji Jin, Ahmed Lamidi, Yi Sheng, Xin Qian
+**Authors:** Satvik Praveen, Shengji Jin, Ahmed Lamidi, Xin Qian, Yi Sheng
+
+📄 **Paper:** [arXiv:2608.08191](https://arxiv.org/abs/2608.08191)
 
 ## Overview
 
@@ -177,7 +179,18 @@ See `[docs/PREPROCESS.md](docs/PREPROCESS.md)` and the dataset-specific README f
 
 ## Citation
 
-If you use BAP-MOS, please cite this repository and the forthcoming paper. Formal BibTeX will be added upon publication.
+If you find BAP-MOS useful in your research, please cite:
+
+@misc{praveen2026bapmosbanditbasedadaptiveprompting,
+      title={BAP-MOS: Bandit-Based Adaptive Prompting for Boundary-Sensitive Multi-Organ Segmentation}, 
+      author={Satvik Praveen and Shengji Jin and Ahmed Lamidi and Xin Qian and Yi Sheng},
+      year={2026},
+      eprint={2608.08191},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2608.08191}, 
+}
+
 
 ## License
 
