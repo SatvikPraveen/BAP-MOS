@@ -18,6 +18,8 @@ BAP-MOS framework overview
 
 *Overview of the BAP-MOS framework.*
 
+![Framework](assets/BAPMOS_Framework.png)
+
 ## Main results
 
 Mean ± std over three training seeds (42, 43, 44).
