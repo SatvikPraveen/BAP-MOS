@@ -23,9 +23,9 @@ BAP-MOS framework overview
 ## Main results
 
 Mean ± std over three training seeds (42, 43, 44).
-Prostate distance metrics (MSD and HD95) are in millimeters; PFUS1 distances use pixel-equivalent units (see `[docs/RESULTS.md](docs/RESULTS.md)`).
+Prostate distance metrics (MSD and HD95) are in millimeters; PFUS1 distances use pixel-equivalent units (see [`docs/RESULTS.md`](docs/RESULTS.md)).
 
-See `[docs/RESULTS.md](docs/RESULTS.md)` for detailed results and per-seed outputs.
+See [`docs/RESULTS.md`](docs/RESULTS.md) for detailed results and per-seed outputs.
 
 ### Prostate TRUS (pooled test)
 
@@ -143,7 +143,7 @@ python -m bapmos.external_baselines.unet.train_multiclass \
 
 Trained run artifacts (`runs/`, W&B logs, Optuna DBs, etc.) are created when you run experiments and are **not** committed.
 
-See `[docs/RUNNING.md](docs/RUNNING.md)` for the full command ladder and requirement-file details.
+See [`docs/RUNNING.md`](docs/RUNNING.md) for the full command ladder and requirement-file details.
 
 ## Pretrained checkpoints
 
@@ -157,7 +157,7 @@ See `[docs/RUNNING.md](docs/RUNNING.md)` for the full command ladder and require
 Place pretrained checkpoints under `models/`.
 
 This repository does not redistribute SAM or MedSAM weights.
-See `[docs/WEIGHTS.md](docs/WEIGHTS.md)` for details.
+See [`docs/WEIGHTS.md`](docs/WEIGHTS.md) for details.
 
 ## Data
 
@@ -168,14 +168,14 @@ BAP-MOS is evaluated on:
 
 The datasets are not redistributed with this repository.
 
-See `[docs/PREPROCESS.md](docs/PREPROCESS.md)` and the dataset-specific README files under `[data/](data/)` for preparation instructions.
+See [`docs/PREPROCESS.md`](docs/PREPROCESS.md) and the dataset-specific README files under [`data/`](data/) for preparation instructions.
 
 ## Further documentation
 
-- Training protocol and optimization: `[docs/INNER_OUTER_LOOP.md](docs/INNER_OUTER_LOOP.md)`
-- Experiment ladder and search ablations: `[docs/EXPERIMENT_LADDER.md](docs/EXPERIMENT_LADDER.md)`, `[docs/SEARCH_METHODS.md](docs/SEARCH_METHODS.md)`
-- Inference, result collation, and paper-table generation: `[docs/RESULTS.md](docs/RESULTS.md)`
-- Runtime artifact layout (`runs/`, `inference_output/`, `results/`): `[docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md)`
+- Training protocol and optimization: [`docs/INNER_OUTER_LOOP.md`](docs/INNER_OUTER_LOOP.md)
+- Experiment ladder and search ablations: [`docs/EXPERIMENT_LADDER.md`](docs/EXPERIMENT_LADDER.md), [`docs/SEARCH_METHODS.md`](docs/SEARCH_METHODS.md)
+- Inference, result collation, and paper-table generation: [`docs/RESULTS.md`](docs/RESULTS.md)
+- Runtime artifact layout (`runs/`, `inference_output/`, `results/`): [`docs/RUNTIME_LAYOUT.md`](docs/RUNTIME_LAYOUT.md)
 
 
 
