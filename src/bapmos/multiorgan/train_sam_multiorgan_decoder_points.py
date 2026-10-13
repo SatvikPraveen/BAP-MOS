@@ -389,6 +389,7 @@ class SAMMultiOrganTrainer:
                     torch.nn.utils.clip_grad_norm_(self.model.mask_decoder.parameters(), 1.0)
                     self.optimizer.step()
                 elif val_evaluator is not None:
+                    # Metrics compare against the native mask; the helper lifts the 256x256 prediction to it.
                     append_multiclass_validation_slice(
                         val_evaluator,
                         pred_classes=multiclass_pred_uint8_from_logits(logits),

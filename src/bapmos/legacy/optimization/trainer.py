@@ -1360,6 +1360,7 @@ class OptimizationTrainer:
                     continue
                 logits, gt, _ = out
                 pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
+                # Score on the native reference grid, not the 256x256 training target.
                 gt_classes = np.asarray(mask_multi).astype(np.uint8)
                 self.evaluator.evaluate_multiclass_slice(
                     to_reference_grid(pred_classes, gt_classes),
@@ -1641,6 +1642,7 @@ class OptimizationTrainer:
                 else:
                     # Compute boundary metrics for validation
                     pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
+                    # Score on the native reference grid, not the 256x256 training target.
                     gt_classes = np.asarray(mask_multi).astype(np.uint8)
                     
                     # Evaluate per organ
@@ -1720,6 +1722,7 @@ class OptimizationTrainer:
                 
                 logits, gt, _ = out
                 pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
+                # Score on the native reference grid, not the 256x256 training target.
                 gt_classes = np.asarray(mask_multi).astype(np.uint8)
                 
                 self.evaluator.evaluate_multiclass_slice(
@@ -1795,6 +1798,7 @@ class OptimizationTrainer:
                 
                 logits, gt, _ = out
                 pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
+                # Score on the native reference grid, not the 256x256 training target.
                 gt_classes = np.asarray(mask_multi).astype(np.uint8)
                 
                 self.evaluator.evaluate_multiclass_slice(
