@@ -380,16 +380,34 @@ def _by_seed_dir(corpus: str, method: str, *, repo: Path) -> Path:
     )
 
 
+def _native_metrics_dir(export_dir: Path) -> Optional[Path]:
+    """Directory holding native-grid metrics for one export, or ``None``.
+
+    Re-scored ``metrics_native_redone/`` wins. Otherwise ``metrics/`` qualifies only
+    when the export's ``evaluation_meta.json`` records the native evaluation grid, so
+    metrics from exports scored on a resized grid are never ingested.
+    """
+    redone = export_dir / "metrics_native_redone"
+    if (redone / "summary_metrics.csv").is_file():
+        return redone
+    metrics = export_dir / "metrics"
+    meta_path = export_dir / "evaluation_meta.json"
+    if not ((metrics / "summary_metrics.csv").is_file() and meta_path.is_file()):
+        return None
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    return metrics if meta.get("evaluation_grid") == EVALUATION_GRID else None
+
+
 def _ingest_redone_prostate_run(spec: RunSpec, *, repo: Path) -> Path:
     from bapmos.results.collate_seeds import normalize_summary_rows, read_summary_metrics
 
     site_dirs = {
-        site: spec.run_dir / site / "metrics_native_redone"
+        site: metrics_dir
         for site in PROSTATE_TEST_SITES
-        if (spec.run_dir / site / "metrics_native_redone" / "summary_metrics.csv").is_file()
+        if (metrics_dir := _native_metrics_dir(spec.run_dir / site)) is not None
     }
-    if len(site_dirs) < 3:
-        raise FileNotFoundError(f"expected 3 site metrics_native_redone under {spec.run_dir}")
+    if len(site_dirs) < len(PROSTATE_TEST_SITES):
+        raise FileNotFoundError(f"expected native-grid metrics for every site under {spec.run_dir}")
 
     rows: List[Dict[str, Any]] = []
     for site, metrics_dir in site_dirs.items():
@@ -540,11 +558,10 @@ def run_corpus(corpus: str, *, repo: Optional[Path] = None) -> Dict[str, Any]:
 def _ingest_bladder_metrics_native_redone(spec: RunSpec, *, repo: Path) -> Path:
     from bapmos.results.collate_seeds import normalize_summary_rows, read_summary_metrics
 
-    summary = spec.run_dir / "metrics_native_redone" / "summary_metrics.csv"
-    if not summary.is_file():
-        summary = spec.run_dir / "metrics" / "summary_metrics.csv"
-    if not summary.is_file():
-        raise FileNotFoundError(f"no native summary under {spec.run_dir}")
+    metrics_dir = _native_metrics_dir(spec.run_dir)
+    if metrics_dir is None:
+        raise FileNotFoundError(f"no native-grid metrics under {spec.run_dir}")
+    summary = metrics_dir / "summary_metrics.csv"
     ingest_name = _canonical_run_name(spec.method, spec.run_name)
     rows = normalize_summary_rows(
         read_summary_metrics(summary),
@@ -559,17 +576,22 @@ def _ingest_bladder_metrics_native_redone(spec: RunSpec, *, repo: Path) -> Path:
 
 
 def ingest_exports_corpus(corpus: str, *, repo: Optional[Path] = None) -> Dict[str, Any]:
-    """Build published ``by_seed/`` + ``combined/*_mean_std.csv`` from ``metrics_native_redone/``.
+    """Build published ``by_seed/`` + ``combined/*_mean_std.csv`` from native-grid metrics.
 
-    Used after a native re-export with ``--eval-size 0`` (no full pred_ids required).
+    Reads ``metrics_native_redone/`` where present, else the export's ``metrics/`` when
+    its ``evaluation_meta.json`` records the native grid. Runs with neither are skipped.
     """
     repo = repo or project_root()
     root = _inference_root(corpus, repo)
     done: List[str] = []
     skipped: List[str] = []
     for spec in _discover_runs(corpus, repo):
-        has_native = (spec.run_dir / "metrics_native_redone" / "summary_metrics.csv").is_file()
-        if not has_native:
+        export_dirs = (
+            [spec.run_dir / site for site in PROSTATE_TEST_SITES]
+            if corpus == "prostate"
+            else [spec.run_dir]
+        )
+        if any(_native_metrics_dir(d) is None for d in export_dirs):
             skipped.append(f"{spec.method}/{spec.run_name}")
             continue
         if corpus == "prostate":

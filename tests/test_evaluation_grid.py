@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import importlib
+import json
 from pathlib import Path
 
 import cv2
@@ -131,3 +132,25 @@ def test_trainer_metrics_score_against_the_native_reference():
     )
     (row,) = [m for m in evaluator.per_slice_metrics if m["organ"] == "Organ"]
     assert row["hd95_mm"] / SPACING_MM == pytest.approx(SHIFT_PX, abs=3)
+
+
+def test_ingest_reads_only_native_grid_metrics(tmp_path):
+    from bapmos.metrics.evaluation_grid import EVALUATION_GRID
+    from bapmos.results.recompute_native_metrics import _native_metrics_dir
+
+    def export(name, meta):
+        d = tmp_path / name
+        (d / "metrics").mkdir(parents=True)
+        (d / "metrics" / "summary_metrics.csv").write_text("organ\n", encoding="utf-8")
+        (d / "evaluation_meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        return d
+
+    native = export("native", {"evaluation_grid": EVALUATION_GRID})
+    resized = export("resized", {"eval_size": 256})
+    assert _native_metrics_dir(native) == native / "metrics"
+    assert _native_metrics_dir(resized) is None
+
+    redone = resized / "metrics_native_redone"
+    redone.mkdir()
+    (redone / "summary_metrics.csv").write_text("organ\n", encoding="utf-8")
+    assert _native_metrics_dir(resized) == redone
