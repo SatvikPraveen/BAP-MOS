@@ -20,11 +20,11 @@ from bapmos.metrics.baseline_validation_metrics import (
     append_multiclass_validation_slice,
     organ_balanced_validation_summary,
 )
-from bapmos.metrics.evaluation_grid import to_reference_grid
 from bapmos.metrics.checkpoint_selection import (
     ptv_kfold_msd_mm,
     resolve_ptv_evaluator_organ,
 )
+from bapmos.metrics.evaluation_grid import to_reference_grid
 from bapmos.legacy.optimization.metrics import MetricsEvaluator
 from bapmos.train.training_taxonomy import BaselineTaxonomyProfile, get_baseline_taxonomy_profile
 
@@ -191,12 +191,10 @@ def run_split_metrics_pass(
                 .numpy()
                 .astype(np.uint8)
             )
-            gt_np = np.asarray(mask_multi).astype(np.uint8)
-            pred_cls = to_reference_grid(pred_cls, gt_np)
             append_multiclass_validation_slice(
                 evaluator,
                 pred_classes=pred_cls,
-                gt_classes=gt_np,
+                gt_classes=mask_multi,
                 image_id=sid,
                 class_mapping=trainer.multiclass_eval_mapping,
                 slice_idx=n,

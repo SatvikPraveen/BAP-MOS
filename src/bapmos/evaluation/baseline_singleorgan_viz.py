@@ -96,7 +96,7 @@ def run_singleorgan_baseline_test_visualizations(
             append_single_organ_validation_slice(
                 evaluator,
                 pred_logits=logits,
-                gt_binary=gt,
+                gt_binary=mask_bin,
                 organ_label=trainer._eval_organ_label,
                 image_id=str(fn),
             )

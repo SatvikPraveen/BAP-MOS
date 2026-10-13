@@ -30,7 +30,6 @@ from segment_anything.utils.transforms import ResizeLongestSide
 
 from ..metrics.baseline_validation_metrics import (
     append_multiclass_validation_slice,
-    gt_uint8_from_tensor,
     multiclass_pred_uint8_from_logits,
     organ_balanced_validation_summary,
 )
@@ -41,7 +40,6 @@ from bapmos.metrics.checkpoint_selection import (
     parse_checkpoint_objective_config,
 )
 from ..evaluation.baseline_epoch_monitoring import (
-    csv_metric_cell,
     init_external_baseline_wandb,
     validation_checkpoint_scores,
 )
@@ -391,12 +389,10 @@ class SAMMultiOrganTrainer:
                     torch.nn.utils.clip_grad_norm_(self.model.mask_decoder.parameters(), 1.0)
                     self.optimizer.step()
                 elif val_evaluator is not None:
-                    pred_u8 = multiclass_pred_uint8_from_logits(logits)
-                    gt_u8 = gt_uint8_from_tensor(gt)
                     append_multiclass_validation_slice(
                         val_evaluator,
-                        pred_classes=pred_u8,
-                        gt_classes=gt_u8,
+                        pred_classes=multiclass_pred_uint8_from_logits(logits),
+                        gt_classes=mask_multi,
                         image_id=str(fn),
                         class_mapping=self._taxonomy.multiclass_eval_mapping,
                     )

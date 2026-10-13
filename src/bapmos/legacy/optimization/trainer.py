@@ -55,6 +55,7 @@ from bapmos.paths import (
     resolve_model_checkpoint,
     resolve_under_project,
 )
+from bapmos.metrics.evaluation_grid import to_reference_grid
 from bapmos.training_taxonomy import get_baseline_taxonomy_profile
 
 # Import optimization components
@@ -1359,10 +1360,10 @@ class OptimizationTrainer:
                     continue
                 logits, gt, _ = out
                 pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
-                gt_classes = gt.cpu().numpy()[0, 0]
+                gt_classes = np.asarray(mask_multi).astype(np.uint8)
                 self.evaluator.evaluate_multiclass_slice(
-                    pred_classes.astype(np.uint8),
-                    gt_classes.astype(np.uint8),
+                    to_reference_grid(pred_classes, gt_classes),
+                    gt_classes,
                     slice_idx=n,
                     image_id=fn,
                     class_mapping=self._multiclass_eval_mapping,
@@ -1640,12 +1641,12 @@ class OptimizationTrainer:
                 else:
                     # Compute boundary metrics for validation
                     pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
-                    gt_classes = gt.cpu().numpy()[0, 0]
+                    gt_classes = np.asarray(mask_multi).astype(np.uint8)
                     
                     # Evaluate per organ
                     self.evaluator.evaluate_multiclass_slice(
-                        pred_classes.astype(np.uint8),
-                        gt_classes.astype(np.uint8),
+                        to_reference_grid(pred_classes, gt_classes),
+                        gt_classes,
                         slice_idx=n,
                         image_id=fn,
                         class_mapping=self._multiclass_eval_mapping,
@@ -1719,11 +1720,11 @@ class OptimizationTrainer:
                 
                 logits, gt, _ = out
                 pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
-                gt_classes = gt.cpu().numpy()[0, 0]
+                gt_classes = np.asarray(mask_multi).astype(np.uint8)
                 
                 self.evaluator.evaluate_multiclass_slice(
-                    pred_classes.astype(np.uint8),
-                    gt_classes.astype(np.uint8),
+                    to_reference_grid(pred_classes, gt_classes),
+                    gt_classes,
                     slice_idx=idx,
                     image_id=fn,
                     class_mapping=self._multiclass_eval_mapping,
@@ -1794,11 +1795,11 @@ class OptimizationTrainer:
                 
                 logits, gt, _ = out
                 pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
-                gt_classes = gt.cpu().numpy()[0, 0]
+                gt_classes = np.asarray(mask_multi).astype(np.uint8)
                 
                 self.evaluator.evaluate_multiclass_slice(
-                    pred_classes.astype(np.uint8),
-                    gt_classes.astype(np.uint8),
+                    to_reference_grid(pred_classes, gt_classes),
+                    gt_classes,
                     slice_idx=idx,
                     image_id=fn,
                     class_mapping=self._multiclass_eval_mapping,

@@ -13,6 +13,7 @@ import numpy as np
 import torch
 
 from bapmos.legacy.optimization.metrics import MetricsEvaluator
+from bapmos.metrics.evaluation_grid import to_reference_grid
 
 
 def organ_balanced_validation_summary(evaluator: MetricsEvaluator) -> Dict[str, Optional[float]]:
@@ -68,9 +69,15 @@ def append_multiclass_validation_slice(
     class_mapping: Dict[int, str],
     slice_idx: int = 0,
 ) -> None:
+    """Score one slice; ``gt_classes`` is the reference on its native grid.
+
+    ``pred_classes`` may be on a coarser model grid; it is nearest-neighbour
+    upsampled to the reference grid (:mod:`bapmos.metrics.evaluation_grid`).
+    """
+    gt_u8 = np.asarray(gt_classes).astype(np.uint8)
     evaluator.evaluate_multiclass_slice(
-        pred_classes,
-        gt_classes,
+        to_reference_grid(pred_classes, gt_u8),
+        gt_u8,
         slice_idx=slice_idx,
         image_id=image_id,
         class_mapping=class_mapping,
@@ -81,15 +88,18 @@ def append_single_organ_validation_slice(
     evaluator: MetricsEvaluator,
     *,
     pred_logits: torch.Tensor,
-    gt_binary: torch.Tensor,
+    gt_binary: np.ndarray,
     organ_label: str,
     image_id: str,
     slice_idx: int = 0,
 ) -> None:
-    """Binary slice: argmax on two-class logits, compare to GT {0,1}."""
+    """Binary slice: argmax on two-class logits, compare to the native GT mask.
+
+    ``gt_binary`` is the reference on its native grid; the prediction is
+    upsampled to it (:mod:`bapmos.metrics.evaluation_grid`).
+    """
     probs = torch.softmax(pred_logits, dim=1)
     pred_c = torch.argmax(probs, dim=1).squeeze(0).detach().cpu().numpy().astype(np.uint8)
-    gt_c = gt_binary.squeeze().detach().cpu().numpy().astype(np.uint8)
-    pred_bin = (pred_c > 0).astype(np.uint8)
-    gt_bin = (gt_c > 0).astype(np.uint8)
+    gt_bin = (np.asarray(gt_binary) > 0).astype(np.uint8)
+    pred_bin = to_reference_grid((pred_c > 0).astype(np.uint8), gt_bin)
     evaluator.evaluate_slice(pred_bin, gt_bin, organ_label, slice_idx=slice_idx, image_id=image_id)
