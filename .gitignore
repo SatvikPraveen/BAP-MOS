@@ -56,7 +56,7 @@ models/**
 
 # --- Training / inference / logging (not shipped) ---
 runs/
-inference_output/
+/inference_output/
 wandb/
 logs/
 optuna_studies/
