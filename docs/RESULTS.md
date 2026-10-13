@@ -16,6 +16,22 @@ Prostate and bladder stay **separate**. Every ladder rung (box, point, fixed rat
 
 CSV column names (`msd_mm`, `hd95_mm`) are shared across corpora for schema consistency; for PFUS1 paper tables, interpret distance columns as pixel-equivalent units.
 
+## Evaluation grid
+
+Every method -- BAP-MOS, fixed-prompt SAM / MedSAM, U-Net, nnU-Net and the legacy
+policies -- is scored on the **native grid of the reference annotation**, with the
+dataset's physical pixel spacing (`bapmos.metrics.evaluation_grid`). A prediction made
+on a coarser grid (the 256×256 SAM decoder output, the U-Net input) is upsampled to
+the reference grid with nearest-neighbour interpolation; the reference itself is never
+resampled. Validation, the bandit probe reward, the TPE objective and test export all
+use this one grid, and each export records `evaluation_grid` and `pixel_spacing_mm`
+in its `evaluation_meta.json`.
+
+Exports written before this rule existed may have scored distances on a shared
+256×256 grid with native spacing, which misstates millimetre distances by the resize
+factor. Re-score them from their saved `predictions/multiclass/*_pred_ids.png` with
+`python -m bapmos.results.recompute_native_metrics run --corpus <prostate|bladder>`.
+
 ## Prostate multi-site rule (critical)
 
 Training uses the **pooled** corpus. Inference is exported **per test site** (`simulation`, `case1`, `case2`) for clarity. Aggregate numbers are **not** an unweighted average of those three site means.
