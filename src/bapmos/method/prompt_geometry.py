@@ -5,9 +5,10 @@ Deterministic prompt generation from ground-truth multi-class masks.
 
 Scale-aware negative ring width (organ area A_o in pixels)::
 
-    r_o = max(6, ⌊0.1 · √A_o⌋)
+    r_o = max(r_min, ⌊α · √A_o⌋)
 
-implemented as ``max(6, int(0.1 * sqrt(A_o)))``.
+α and r_min are searched by the outer TPE loop (α ∈ [0.05, 0.15],
+r_min ∈ [2, 20]); the defaults here (α = 0.1, r_min = 6) are the search baseline.
 
 Point prompts: one positive inside M_o; three negatives from the exclusive ring
 dilate(M_o, r_o) \\ M_o.
@@ -39,9 +40,7 @@ def stable_rng_from_id(sample_id: str, base_seed: int) -> np.random.Generator:
 
 
 def ring_width_px(organ_area: int, r_min: int = 6, alpha: float = 0.1) -> int:
-    """
-    Scale-organ ring: r_o = max(r_min, ⌊α · √A_o⌋) with α=0.1, r_min=6.
-    """
+    """Scale-organ ring: r_o = max(r_min, ⌊α · √A_o⌋)."""
     if organ_area <= 0:
         return r_min
     return max(r_min, int(alpha * math.sqrt(float(organ_area))))
@@ -59,7 +58,7 @@ def resolve_ring_width(
     Resolve negative-point ring width in pixels.
 
     - ``fixed``: constant ``ring_width_fixed`` (legacy BAP-MOS, e.g. 20 px).
-    - ``scale_organ``: r_o = max(r_min, int(0.1 * sqrt(A_o))).
+    - ``scale_organ``: r_o = max(r_min, ⌊α · √A_o⌋).
     """
     mode = str(ring_mode).lower().replace("-", "_")
     if mode == "fixed":
