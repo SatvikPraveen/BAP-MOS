@@ -4,7 +4,7 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
-    open-pull-requests-limit: 5
-    groups:
-      python-deps:
-        patterns: ["*"]
+    # Security updates only. The pins reproduce the environment used for the
+    # paper, so routine version-bump PRs are disabled; Dependabot security
+    # updates (repository setting) still open PRs for vulnerable pins.
+    open-pull-requests-limit: 0
