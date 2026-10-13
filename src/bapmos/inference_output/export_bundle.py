@@ -30,9 +30,9 @@ from bapmos.metrics.evaluation_grid import EVALUATION_GRID, to_reference_grid
 from bapmos.training_taxonomy import BaselineTaxonomyProfile
 
 
-# ``predict_fn(image_rgb, mask_multi, filename)`` → multiclass prediction (H, W) or None.
-# ``mask_multi`` is the ground-truth mask for crop/pad/alignment convenience only —
-# not for training or label leakage into the prediction.
+# ``predict_fn(image_rgb, mask_multi, filename)`` → multiclass label map or None. The map may
+# be on the model's own grid; the bundle upsamples it to the GT grid. ``mask_multi`` is passed
+# only so prompt-based methods can build prompts -- never as a label for the prediction.
 PredictFn = Callable[[Any, Any, str], Optional[np.ndarray]]
 
 
@@ -100,9 +100,8 @@ def export_stratified_test_bundle(
     and path separators cannot nest under ``predictions/``.
 
     ``predict_fn(image_rgb, mask_multi, filename)`` must return a multiclass
-    prediction array (or ``None`` to skip). The GT ``mask_multi`` is provided
-    only for geometry convenience (crop/pad/resize to GT size), not as a
-    supervision signal.
+    label map on any grid (or ``None`` to skip). The GT ``mask_multi`` is
+    provided only for prompt construction, not as a supervision signal.
 
     Every method is scored on the native GT grid with the taxonomy's physical
     pixel spacing (:mod:`bapmos.metrics.evaluation_grid`): a coarser prediction is
@@ -385,7 +384,8 @@ def export_stratified_test_bundle(
             "wall_clock_s": round(wall_s, 3),
             "wall_ms_per_slice": round((wall_s * 1000.0) / len(vals), 4),
             "note": (
-                "Per-slice = predict_fn + metric eval (CUDA sync). "
+                "Per-slice = predict_fn + native-grid metric eval (CUDA sync); not "
+                "comparable with exports that scored metrics on a 256x256 grid. "
                 "wall_* includes dataloader iteration; viz/pred PNG writes excluded when capped at 0."
             ),
         }

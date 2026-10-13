@@ -114,6 +114,12 @@ def test_test_export_entry_points_import(module):
     importlib.import_module(module)
 
 
+@pytest.mark.parametrize("bad", [np.full((4, 4), -1), np.full((4, 4), 0.5), np.full((4, 4), 300)])
+def test_to_reference_grid_rejects_invalid_class_ids(bad):
+    with pytest.raises(ValueError, match="class ids"):
+        to_reference_grid(bad, np.zeros((4, 4), dtype=np.uint8))
+
+
 def test_trainer_metrics_score_against_the_native_reference():
     """Validation / test helpers used by every trainer lift the prediction to the reference."""
     from bapmos.legacy.optimization.metrics import MetricsEvaluator
@@ -132,6 +138,32 @@ def test_trainer_metrics_score_against_the_native_reference():
     )
     (row,) = [m for m in evaluator.per_slice_metrics if m["organ"] == "Organ"]
     assert row["hd95_mm"] / SPACING_MM == pytest.approx(SHIFT_PX, abs=3)
+
+
+def test_export_records_the_evaluation_grid(tmp_path):
+    from bapmos.inference_output.export_bundle import export_stratified_test_bundle
+    from bapmos.metrics.evaluation_grid import EVALUATION_GRID
+
+    gt, pred = _reference_and_shifted_prediction()
+    checkpoint = tmp_path / "best_checkpoint.pth"
+    checkpoint.touch()
+    export_stratified_test_bundle(
+        test_loader=[
+            {"image": [np.zeros((*NATIVE_HW, 3), np.uint8)], "mask": [gt], "filename": ["s.png"]}
+        ],
+        predict_fn=lambda image, mask, name: _on_model_grid(pred),
+        output_dir=tmp_path / "export",
+        taxonomy=_one_organ_taxonomy(),
+        distance_unit="mm",
+        save_predictions=False,
+        save_visualizations=False,
+        checkpoint=checkpoint,
+        data_root=tmp_path,
+        method_slug="test_method",
+    )
+    meta = json.loads((tmp_path / "export" / "evaluation_meta.json").read_text(encoding="utf-8"))
+    assert meta["evaluation_grid"] == EVALUATION_GRID
+    assert meta["pixel_spacing_mm"] == [SPACING_MM, SPACING_MM]
 
 
 def test_ingest_reads_only_native_grid_metrics(tmp_path):
