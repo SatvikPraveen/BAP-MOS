@@ -175,6 +175,7 @@ class UNetMultiOrganTrainer:
             masks = batch["mask"]
             filenames = batch["filename"]
             xs: list[torch.Tensor] = []
+            # Native masks for metrics; the loss uses the 256x256 batch (bapmos.metrics.evaluation_grid).
             natives: list[np.ndarray] = []
             fns: list[str] = []
             for i in range(len(images)):
@@ -227,6 +228,7 @@ class UNetMultiOrganTrainer:
 
             xs: list[torch.Tensor] = []
             ys: list[torch.Tensor] = []
+            # Native masks for metrics; the loss uses the 256x256 batch (bapmos.metrics.evaluation_grid).
             natives: list[np.ndarray] = []
             fns: list = []
 
@@ -511,6 +513,7 @@ class UNetMultiOrganTrainer:
                     y_dev,
                     self.num_classes,
                 )
+                # Metrics compare against the native mask; the helper lifts the 256x256 prediction to it.
                 append_multiclass_validation_slice(
                     evaluator,
                     pred_classes=multiclass_pred_uint8_from_logits(logits),

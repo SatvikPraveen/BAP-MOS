@@ -122,6 +122,7 @@ def run_multiorgan_baseline_test_visualizations(
             logits, gt = out
 
             pred_u8_lr = multiclass_pred_uint8_from_logits(logits)
+            # Metrics compare against the native mask; the helper lifts the 256x256 prediction to it.
             append_multiclass_validation_slice(
                 evaluator,
                 pred_classes=pred_u8_lr,
