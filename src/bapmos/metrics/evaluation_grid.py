@@ -35,8 +35,13 @@ def to_reference_grid(pred_labels: np.ndarray, reference_labels: np.ndarray) -> 
         raise ValueError(
             f"expected 2-D label maps, got prediction {pred.shape} and reference {ref.shape}"
         )
-    if pred.size and int(pred.max()) > 255:
-        raise ValueError(f"class id {int(pred.max())} does not fit in uint8")
+    if pred.size:
+        if not np.array_equal(pred, np.round(pred)):
+            raise ValueError("prediction must hold integer class ids")
+        if pred.min() < 0 or pred.max() > 255:
+            raise ValueError(
+                f"class ids must lie in [0, 255], got [{pred.min()}, {pred.max()}]"
+            )
     pred = pred.astype(np.uint8, copy=False)
     if pred.shape == ref.shape:
         return pred
