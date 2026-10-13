@@ -13,7 +13,6 @@ import torch
 
 from bapmos.metrics.baseline_validation_metrics import (
     append_multiclass_validation_slice,
-    gt_uint8_from_tensor,
     multiclass_pred_uint8_from_logits,
 )
 from bapmos.evaluation.test_panels import (
@@ -123,11 +122,10 @@ def run_multiorgan_baseline_test_visualizations(
             logits, gt = out
 
             pred_u8_lr = multiclass_pred_uint8_from_logits(logits)
-            gt_u8_lr = gt_uint8_from_tensor(gt)
             append_multiclass_validation_slice(
                 evaluator,
                 pred_classes=pred_u8_lr,
-                gt_classes=gt_u8_lr,
+                gt_classes=mask_multi,
                 image_id=str(fn),
                 class_mapping=taxonomy.multiclass_eval_mapping,
             )

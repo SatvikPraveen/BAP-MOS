@@ -284,7 +284,7 @@ class SAMSingleOrganTrainer:
                     append_single_organ_validation_slice(
                         val_evaluator,
                         pred_logits=logits,
-                        gt_binary=gt,
+                        gt_binary=mask_bin,
                         organ_label=self._eval_organ_label,
                         image_id=str(fn),
                     )

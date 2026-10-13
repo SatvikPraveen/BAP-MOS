@@ -111,3 +111,23 @@ def test_export_reports_distances_at_native_scale(tmp_path):
 )
 def test_test_export_entry_points_import(module):
     importlib.import_module(module)
+
+
+def test_trainer_metrics_score_against_the_native_reference():
+    """Validation / test helpers used by every trainer lift the prediction to the reference."""
+    from bapmos.legacy.optimization.metrics import MetricsEvaluator
+    from bapmos.metrics.baseline_validation_metrics import (
+        append_multiclass_validation_slice,
+    )
+
+    gt, pred = _reference_and_shifted_prediction()
+    evaluator = MetricsEvaluator(pixel_spacing=(SPACING_MM, SPACING_MM), organs=["Organ"])
+    append_multiclass_validation_slice(
+        evaluator,
+        pred_classes=_on_model_grid(pred),
+        gt_classes=gt,
+        image_id="slice_000",
+        class_mapping={1: "Organ"},
+    )
+    (row,) = [m for m in evaluator.per_slice_metrics if m["organ"] == "Organ"]
+    assert row["hd95_mm"] / SPACING_MM == pytest.approx(SHIFT_PX, abs=3)

@@ -40,7 +40,6 @@ from torch.utils.data import DataLoader
 
 from bapmos.baseline_validation_metrics import (
     append_multiclass_validation_slice,
-    gt_uint8_from_tensor,
     multiclass_pred_uint8_from_logits,
     organ_balanced_validation_summary,
 )
@@ -176,33 +175,27 @@ class UNetMultiOrganTrainer:
             masks = batch["mask"]
             filenames = batch["filename"]
             xs: list[torch.Tensor] = []
-            ys: list[torch.Tensor] = []
+            natives: list[np.ndarray] = []
             fns: list[str] = []
             for i in range(len(images)):
                 image_rgb = images[i].numpy() if torch.is_tensor(images[i]) else images[i]
                 mask_multi = masks[i].numpy() if torch.is_tensor(masks[i]) else masks[i]
                 if mask_multi.max() == 0:
                     continue
-                x, y = resize_for_baseline(image_rgb, mask_multi, size=256)
+                x, _ = resize_for_baseline(image_rgb, mask_multi, size=256)
                 xs.append(x)
-                ys.append(y)
+                natives.append(mask_multi)
                 fns.append(str(filenames[i]))
             if not xs:
                 continue
-            xb = torch.cat(xs, dim=0).to(self.device)
-            yb = torch.cat(ys, dim=0).to(self.device)
-            xb = imagenet_normalize_bchw(xb)
+            xb = imagenet_normalize_bchw(torch.cat(xs, dim=0).to(self.device))
             logits = self.model(xb)
-            bs = int(logits.shape[0])
-            for j in range(bs):
+            for j in range(int(logits.shape[0])):
                 logits_j = logits[j : j + 1]
-                y_j = yb[j : j + 1]
-                pred_u8 = multiclass_pred_uint8_from_logits(logits_j)
-                gt_u8 = gt_uint8_from_tensor(y_j.unsqueeze(1).float())
                 append_multiclass_validation_slice(
                     evaluator,
-                    pred_classes=pred_u8,
-                    gt_classes=gt_u8,
+                    pred_classes=multiclass_pred_uint8_from_logits(logits_j),
+                    gt_classes=natives[j],
                     image_id=fns[j],
                     class_mapping=self._taxonomy.multiclass_eval_mapping,
                     slice_idx=n,
@@ -234,6 +227,7 @@ class UNetMultiOrganTrainer:
 
             xs: list[torch.Tensor] = []
             ys: list[torch.Tensor] = []
+            natives: list[np.ndarray] = []
             fns: list = []
 
             for i in range(len(images)):
@@ -245,6 +239,7 @@ class UNetMultiOrganTrainer:
                 x, y = resize_for_baseline(image_rgb, mask_multi, size=256)
                 xs.append(x)
                 ys.append(y)
+                natives.append(mask_multi)
                 fns.append(fn)
 
             if not xs:
@@ -279,12 +274,10 @@ class UNetMultiOrganTrainer:
                 y_j = yb[j : j + 1]
                 batch_dice += mean_fg_dice_from_logits(logits_j, y_j, self.num_classes)
                 if not train and val_evaluator is not None:
-                    pred_u8 = multiclass_pred_uint8_from_logits(logits_j)
-                    gt_u8 = gt_uint8_from_tensor(y_j.unsqueeze(1).float())
                     append_multiclass_validation_slice(
                         val_evaluator,
-                        pred_classes=pred_u8,
-                        gt_classes=gt_u8,
+                        pred_classes=multiclass_pred_uint8_from_logits(logits_j),
+                        gt_classes=natives[j],
                         image_id=str(fns[j]),
                         class_mapping=self._taxonomy.multiclass_eval_mapping,
                     )
@@ -518,12 +511,10 @@ class UNetMultiOrganTrainer:
                     y_dev,
                     self.num_classes,
                 )
-                pred_u8 = multiclass_pred_uint8_from_logits(logits)
-                gt_u8 = gt_uint8_from_tensor(y_dev.unsqueeze(1).float())
                 append_multiclass_validation_slice(
                     evaluator,
-                    pred_classes=pred_u8,
-                    gt_classes=gt_u8,
+                    pred_classes=multiclass_pred_uint8_from_logits(logits),
+                    gt_classes=mask_multi,
                     image_id=str(filenames[i]),
                     class_mapping=self._taxonomy.multiclass_eval_mapping,
                 )
