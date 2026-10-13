@@ -12,12 +12,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import cv2
-import numpy as np
 
 from bapmos.evaluation.test_panels import distance_unit_short
-from bapmos.external_baselines.baseline_training_protocol import PFUS1_BASELINE_EVAL_SIZE
 from bapmos.external_baselines.nnunet2d.evaluate_nnunet_predictions import (
-    align_pred_to_gt,
     find_prediction_png,
     load_split_entries,
 )
@@ -49,7 +46,6 @@ def run_nnunet_test_export(
     viz_per_patient_max: int | None = None,
     export_viz_kwargs: Optional[Dict[str, Any]] = None,
     evaluation_meta_extra: Optional[Dict[str, Any]] = None,
-    eval_size: Optional[int] = PFUS1_BASELINE_EVAL_SIZE,
     force_inference_output: bool = False,
     experiment_seed: Optional[int] = None,
     run_name: Optional[str] = None,
@@ -71,7 +67,7 @@ def run_nnunet_test_export(
     unit = distance_unit_short(taxonomy.taxonomy_name)
 
     def predict_fn(image_rgb, mask_multi, fn: str):
-        del image_rgb
+        del image_rgb, mask_multi
         case_id = id_to_case.get(fn) or id_to_case.get(Path(fn).stem)
         if case_id is None:
             raise KeyError(f"No nnU-Net case_id for test filename {fn!r}")
@@ -81,10 +77,7 @@ def run_nnunet_test_export(
             raise IOError(f"Failed to read prediction: {pred_path}")
         if pred.ndim == 3:
             pred = pred[:, :, 0]
-        if hasattr(mask_multi, "numpy"):
-            mask_multi = mask_multi.numpy()
-        gt = mask_multi.astype(np.uint8)
-        return align_pred_to_gt(pred.astype(np.uint8), gt)
+        return pred
 
     viz_kwargs = dict(
         export_viz_kwargs
@@ -101,8 +94,6 @@ def run_nnunet_test_export(
     base_extra.setdefault("family", "nnunet")
     base_extra.setdefault("predictions_dir", str(predictions_dir))
     base_extra.setdefault("case_mapping", str(case_mapping_path))
-    if eval_size is not None:
-        base_extra.setdefault("eval_size", int(eval_size))
 
     export_stratified_sites(
         data_root=data_root,
@@ -113,7 +104,6 @@ def run_nnunet_test_export(
         distance_unit=unit,
         checkpoint=str(predictions_dir),
         method_slug="nnunet",
-        eval_size=eval_size,
         viz_kwargs=viz_kwargs,
         run_name=run_name,
         evaluation_meta_extra=lambda label: {**base_extra, "test_site": label},
@@ -134,21 +124,11 @@ def main() -> None:
     p.add_argument("--splits-subdir", type=str, default=None)
     p.add_argument("--viz-per-patient-max", type=int, default=None, help="Deprecated (ignored).")
     p.add_argument("--viz-pdf-max", type=int, default=None)
-    p.add_argument(
-        "--eval-size",
-        type=int,
-        default=PFUS1_BASELINE_EVAL_SIZE,
-        help=(
-            "Square side for nearest-neighbor pred/GT resize before metrics "
-            f"(default {PFUS1_BASELINE_EVAL_SIZE}, U-Net/SAM parity). Use 0 for native resolution."
-        ),
-    )
     p.add_argument("--run-name", type=str, default=None)
     p.add_argument("--experiment-seed", type=int, default=42)
     p.add_argument("--force-inference-output", action="store_true")
     args = p.parse_args()
 
-    eval_size = None if args.eval_size in (None, 0) else int(args.eval_size)
     viz = export_viz_kwargs_for_data_root(
         args.data_root, viz_pdf_max=args.viz_pdf_max
     )
@@ -161,7 +141,6 @@ def main() -> None:
         splits_subdir=args.splits_subdir,
         viz_per_patient_max=args.viz_per_patient_max,
         export_viz_kwargs=viz,
-        eval_size=0 if eval_size is None else eval_size,
         force_inference_output=bool(args.force_inference_output),
         experiment_seed=args.experiment_seed,
         run_name=args.run_name,

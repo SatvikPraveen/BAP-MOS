@@ -6,7 +6,6 @@ import random
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
-import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -26,25 +25,6 @@ def seed_worker(worker_id: int) -> None:
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
-
-
-def resize_masks_nearest(
-    pred: np.ndarray,
-    gt: np.ndarray,
-    size: int,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Resize multiclass pred/GT to ``size×size`` for baseline metric parity (nearest labels)."""
-    pred_u8 = cv2.resize(
-        pred.astype(np.uint8),
-        (int(size), int(size)),
-        interpolation=cv2.INTER_NEAREST,
-    )
-    gt_u8 = cv2.resize(
-        gt.astype(np.uint8),
-        (int(size), int(size)),
-        interpolation=cv2.INTER_NEAREST,
-    )
-    return pred_u8, gt_u8
 
 
 def resize_for_baseline(

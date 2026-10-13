@@ -1,6 +1,7 @@
 """Recompute Dice / MSD / HD95 on the native GT grid with physical spacing.
 
-Primary paper protocol (feedback-aligned):
+Re-scores saved ``pred_ids`` PNGs from exports made before every method was
+scored on the native grid (``bapmos.metrics.evaluation_grid``):
   - Nearest-neighbor align pred → GT shape if needed
   - Dice on that grid
   - MSD / HD95 with taxonomy ``pixel_spacing_mm`` (true mm)
@@ -43,6 +44,7 @@ from bapmos.results.layout import (
     infer_seed_from_run_name,
 )
 from bapmos.legacy.optimization.metrics import MetricsEvaluator
+from bapmos.metrics.evaluation_grid import EVALUATION_GRID, to_reference_grid
 from bapmos.train.training_taxonomy import get_baseline_taxonomy_profile
 
 logger = logging.getLogger(__name__)
@@ -281,11 +283,7 @@ def _evaluate_stems(
     for stem in stems:
         pred = _read_label_png(_pred_ids_path(run_dir, stem, site=site))
         gt = _read_label_png(_gt_path(masks_dir, stem))
-        if pred.shape != gt.shape:
-            # Prefer GT reference grid (feedback): nearest-neighbor resample pred.
-            pred = cv2.resize(
-                pred, (gt.shape[1], gt.shape[0]), interpolation=cv2.INTER_NEAREST
-            )
+        pred = to_reference_grid(pred, gt)
         evaluator.evaluate_multiclass_slice(
             pred,
             gt,
@@ -328,8 +326,7 @@ def recompute_run_native(
             evaluator.export_per_slice_csv(out / "per_slice_metrics.csv")
             evaluator.export_summary_csv(out / "summary_metrics.csv")
             meta = {
-                "protocol": "native_gt_grid_physical_spacing",
-                "eval_size": 0,
+                "evaluation_grid": EVALUATION_GRID,
                 "pixel_spacing_mm": list(taxonomy.pixel_spacing_mm),
                 "method": spec.method,
                 "run_name": spec.run_name,
@@ -362,8 +359,7 @@ def recompute_run_native(
         evaluator.export_per_slice_csv(out / "per_slice_metrics.csv")
         evaluator.export_summary_csv(out / "summary_metrics.csv")
         meta = {
-            "protocol": "native_gt_grid_physical_spacing",
-            "eval_size": 0,
+            "evaluation_grid": EVALUATION_GRID,
             "pixel_spacing_mm": list(taxonomy.pixel_spacing_mm),
             "method": spec.method,
             "run_name": spec.run_name,
@@ -614,7 +610,7 @@ def main() -> None:
 
     i = sub.add_parser(
         "ingest-exports",
-        help="Build by_seed/ + combined mean_std from metrics_native_redone/ (after --eval-size 0 export)",
+        help="Build by_seed/ + combined mean_std from metrics_native_redone/",
     )
     i.add_argument("--corpus", choices=("prostate", "bladder"), required=True)
 

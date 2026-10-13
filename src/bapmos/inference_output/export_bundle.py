@@ -5,7 +5,6 @@ from __future__ import annotations
 import csv
 import json
 import os
-import shutil
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -14,11 +13,6 @@ import cv2
 import numpy as np
 import torch
 
-from bapmos.external_baselines.baseline_training_protocol import (
-    PFUS1_BASELINE_EVAL_SIZE,
-    resolve_boundary_eval_size,
-)
-from bapmos.external_baselines.common import resize_masks_nearest
 from bapmos.evaluation.test_panels import (
     multiclass_mask_to_bgr,
     save_overlay_pred_pair_png_pdf,
@@ -32,6 +26,7 @@ from bapmos.evaluation.viz_selection import (
     select_slices_for_visualization,
 )
 from bapmos.legacy.optimization.metrics import MetricsEvaluator
+from bapmos.metrics.evaluation_grid import EVALUATION_GRID, to_reference_grid
 from bapmos.training_taxonomy import BaselineTaxonomyProfile
 
 
@@ -87,7 +82,6 @@ def export_stratified_test_bundle(
     checkpoint: Optional[str | Path] = None,
     data_root: Optional[str | Path] = None,
     method_slug: Optional[str] = None,
-    eval_size: Optional[int] = PFUS1_BASELINE_EVAL_SIZE,
     record_e2e_timing: Optional[bool] = None,
 ) -> MetricsEvaluator:
     """
@@ -110,10 +104,9 @@ def export_stratified_test_bundle(
     only for geometry convenience (crop/pad/resize to GT size), not as a
     supervision signal.
 
-    Predictions / visualizations stay at native GT resolution. Boundary MSD/HD95
-    default to resizing pred+GT to ``PFUS1_BASELINE_EVAL_SIZE`` (256) for
-    cross-method parity with decoder / U-Net training resolution. Pass
-    ``eval_size=0`` for native-resolution distances.
+    Every method is scored on the native GT grid with the taxonomy's physical
+    pixel spacing (:mod:`bapmos.metrics.evaluation_grid`): a coarser prediction is
+    nearest-neighbour upsampled to the GT shape, and the GT is never resampled.
 
     Difference panels use ``difference_v1`` (neutral grey canvas), not the older
     ultrasound-underlay difference blend. Overlay / difference PNG and PDF are
@@ -134,8 +127,6 @@ def export_stratified_test_bundle(
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    metric_eval_size = resolve_boundary_eval_size(eval_size)
 
     pred_dir = output_dir / "predictions"
     pred_ids_dir = pred_dir / "multiclass"
@@ -192,18 +183,12 @@ def export_stratified_test_bundle(
             if pred is None:
                 continue
 
-            pred_u8 = pred.astype(np.uint8)
             gt_u8 = mask_multi.astype(np.uint8)
-            if metric_eval_size is not None:
-                pred_eval, gt_eval = resize_masks_nearest(
-                    pred_u8, gt_u8, int(metric_eval_size)
-                )
-            else:
-                pred_eval, gt_eval = pred_u8, gt_u8
+            pred_u8 = to_reference_grid(pred, gt_u8)
 
             evaluator.evaluate_multiclass_slice(
-                pred_eval,
-                gt_eval,
+                pred_u8,
+                gt_u8,
                 slice_idx=0,
                 image_id=stem,
                 class_mapping=class_mapping,
@@ -321,8 +306,8 @@ def export_stratified_test_bundle(
                 pred = predict_fn(image_rgb, mask_multi, fn)
                 if pred is None:
                     continue
-                pred_u8 = pred.astype(np.uint8)
                 gt_u8 = mask_multi.astype(np.uint8)
+                pred_u8 = to_reference_grid(pred, gt_u8)
                 write_pdf = bool(save_viz_pdf)
                 try:
                     png_path, pdf_path = save_overlay_pred_pair_png_pdf(
@@ -380,34 +365,6 @@ def export_stratified_test_bundle(
     evaluator.export_summary_csv(metrics_dir / "summary_metrics.csv")
     evaluator.export_failure_analysis_csv(metrics_dir / "failure_analysis.csv", top_n=20)
 
-    # Native protocol: mirror metrics for *_redone ingest without requiring full pred_ids.
-    if metric_eval_size is None:
-        redone_dir = output_dir / "metrics_native_redone"
-        redone_dir.mkdir(parents=True, exist_ok=True)
-        for name in (
-            "per_slice_metrics.csv",
-            "summary_metrics.csv",
-            "failure_analysis.csv",
-        ):
-            src = metrics_dir / name
-            if src.is_file():
-                shutil.copy2(src, redone_dir / name)
-        (redone_dir / "evaluation_meta_redone.json").write_text(
-            json.dumps(
-                {
-                    "protocol": "native_gt_grid_physical_spacing",
-                    "eval_size": 0,
-                    "pixel_spacing_mm": list(taxonomy.pixel_spacing_mm),
-                    "method_slug": method_slug,
-                    "n_stems": len(e2e_rows) if e2e_rows else None,
-                    "source": "export_bundle_eval_size_0",
-                },
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-
     wall_s = time.perf_counter() - wall0
     if record_e2e_timing and e2e_rows:
         e2e_csv = metrics_dir / "e2e_per_slice.csv"
@@ -438,10 +395,8 @@ def export_stratified_test_bundle(
 
     if checkpoint is not None and data_root is not None and method_slug:
         meta_extra = dict(evaluation_meta_extra or {})
-        meta_extra.setdefault(
-            "eval_size",
-            int(metric_eval_size) if metric_eval_size is not None else 0,
-        )
+        meta_extra["evaluation_grid"] = EVALUATION_GRID
+        meta_extra["pixel_spacing_mm"] = list(taxonomy.pixel_spacing_mm)
         if record_e2e_timing and e2e_rows:
             meta_extra["e2e_timing"] = "metrics/e2e_timing.json"
         write_method_evaluation_meta(

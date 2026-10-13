@@ -1,9 +1,9 @@
 """
 Epoch / block / test metrics for ``bapmos.method`` (shared evaluator with legacy baselines).
 
-Loss stays at the SAM decoder grid (256×256); MSD/HD95 upsample class maps to native GT
-resolution via :func:`upsample_pred_classes_to_gt` (nearest-neighbor), matching
-``run_test_inference._resize_pred``.
+Loss stays at the SAM decoder grid (256×256). Every metric -- validation, the bandit
+probe and test export alike -- is computed on the native GT grid
+(:mod:`bapmos.metrics.evaluation_grid`).
 """
 
 from __future__ import annotations
@@ -13,7 +13,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple, TYPE_CHECKING
 
-import cv2
 import numpy as np
 import torch
 
@@ -21,6 +20,7 @@ from bapmos.metrics.baseline_validation_metrics import (
     append_multiclass_validation_slice,
     organ_balanced_validation_summary,
 )
+from bapmos.metrics.evaluation_grid import to_reference_grid
 from bapmos.metrics.checkpoint_selection import (
     ptv_kfold_msd_mm,
     resolve_ptv_evaluator_organ,
@@ -128,30 +128,6 @@ def validation_objective_msd(
     )
 
 
-def upsample_pred_classes_to_gt(
-    pred_classes: np.ndarray,
-    gt_full: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Upsample low-res SAM class predictions to full GT slice shape.
-
-    Used by train/val metrics passes (native-resolution MSD/HD95). Stratified
-    **test** export instead resizes pred+GT to ``PFUS1_BASELINE_EVAL_SIZE`` (256)
-    via ``export_stratified_test_bundle(eval_size=...)`` for cross-method parity;
-    keep this helper on native until an HPO cutover aligns train/val with test.
-    Loss remains at 256×256 either way.
-    """
-    gt_np = np.asarray(gt_full).astype(np.uint8)
-    pred = np.asarray(pred_classes).astype(np.uint8)
-    if pred.shape != gt_np.shape[:2]:
-        pred = cv2.resize(
-            pred,
-            (gt_np.shape[1], gt_np.shape[0]),
-            interpolation=cv2.INTER_NEAREST,
-        )
-    return pred, gt_np
-
-
 @torch.no_grad()
 def run_split_metrics_pass(
     trainer: "BAPMOSTrainer",
@@ -163,8 +139,7 @@ def run_split_metrics_pass(
     """
     One full pass over *loader* (train or val): loss, batch-mean dice, organ-balanced MSD/HD95.
 
-    MSD/HD95 currently use native GT resolution (see ``upsample_pred_classes_to_gt``).
-    Published test bundles use ``eval_size=256`` for method/baseline parity.
+    Metrics are computed on the native GT grid, as in test export.
     """
     trainer.model.eval()
     evaluator = MetricsEvaluator(
@@ -216,7 +191,8 @@ def run_split_metrics_pass(
                 .numpy()
                 .astype(np.uint8)
             )
-            pred_cls, gt_np = upsample_pred_classes_to_gt(pred_cls, mask_multi)
+            gt_np = np.asarray(mask_multi).astype(np.uint8)
+            pred_cls = to_reference_grid(pred_cls, gt_np)
             append_multiclass_validation_slice(
                 evaluator,
                 pred_classes=pred_cls,
@@ -286,18 +262,14 @@ def validate_block_per_organ_probe_metrics(
             .cpu()
             .numpy()
         )
+        pred_cls = to_reference_grid(pred_cls, mask_multi)
         for organ_key, class_id in trainer.organ_to_class.items():
             gt_bin = (mask_multi == class_id).astype(np.uint8)
             if gt_bin.sum() == 0:
                 continue
             pred_bin = (pred_cls == class_id).astype(np.uint8)
-            pred_rs = cv2.resize(
-                pred_bin,
-                (gt_bin.shape[1], gt_bin.shape[0]),
-                interpolation=cv2.INTER_NEAREST,
-            )
             metrics = compute_all_metrics(
-                pred_rs,
+                pred_bin,
                 gt_bin,
                 trainer.pixel_spacing,
                 organ_name=organ_key,

@@ -15,18 +15,14 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import cv2
 import numpy as np
 import pandas as pd
 
-from bapmos.external_baselines.baseline_training_protocol import (
-    PFUS1_BASELINE_EVAL_SIZE,
-    resolve_boundary_eval_size,
-)
-from bapmos.external_baselines.common import resize_masks_nearest
 from bapmos.external_baselines.nnunet2d.export_nnunet_dataset import dataset_folder
+from bapmos.metrics.evaluation_grid import EVALUATION_GRID, to_reference_grid
 from bapmos.paths import (
     dataset_bundle_tag,
     find_combined_masks_dir,
@@ -101,14 +97,12 @@ def evaluate_nnunet_predictions_for_entries(
     data_root: Path,
     output_dir: Path,
     split_label: str = "val",
-    eval_size: Optional[int] = PFUS1_BASELINE_EVAL_SIZE,
 ) -> tuple[MetricsEvaluator, Dict[str, Any]]:
     """Evaluate nnU-Net PNG predictions for an explicit list of case_mapping entries."""
     data_root = resolve_training_data_root_path(str(data_root))
     tax = get_baseline_taxonomy_profile(data_root)
     masks_dir = find_combined_masks_dir(data_root)
     class_mapping = {int(k): v for k, v in tax.multiclass_eval_mapping.items()}
-    metric_eval_size = resolve_boundary_eval_size(eval_size)
 
     evaluator = MetricsEvaluator(
         pixel_spacing=tuple(tax.pixel_spacing_mm),
@@ -135,10 +129,8 @@ def evaluate_nnunet_predictions_for_entries(
             raise IOError(f"Failed to read pred={pred_path} or gt={gt_path}")
         if pred.ndim == 3:
             pred = pred[:, :, 0]
-        pred = _align_pred_to_gt(pred.astype(np.uint8), gt.astype(np.uint8))
         gt = gt.astype(np.uint8)
-        if metric_eval_size is not None:
-            pred, gt = resize_masks_nearest(pred, gt, int(metric_eval_size))
+        pred = to_reference_grid(pred, gt)
 
         evaluator.evaluate_multiclass_slice(
             pred, gt, slice_idx=0, image_id=image_id, class_mapping=class_mapping
@@ -162,7 +154,7 @@ def evaluate_nnunet_predictions_for_entries(
         "pixel_spacing": list(tax.pixel_spacing_mm),
         "split": split,
         f"n_{split}_cases": n_eval,
-        "eval_size": int(metric_eval_size) if metric_eval_size is not None else 0,
+        "evaluation_grid": EVALUATION_GRID,
     }
     with open(output_dir / "evaluation_meta.json", "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
@@ -205,17 +197,10 @@ def _gt_mask_path(data_root: Path, entry: Dict[str, Any], masks_dir: Path) -> Pa
     return masks_dir / f"{img_id}_combined_mask.png"
 
 
-def _align_pred_to_gt(pred: np.ndarray, gt: np.ndarray) -> np.ndarray:
-    if pred.shape == gt.shape:
-        return pred
-    return cv2.resize(pred, (gt.shape[1], gt.shape[0]), interpolation=cv2.INTER_NEAREST)
-
-
 # Public aliases for shared use by ``run_test_inference`` (stable names).
 find_prediction_png = _find_prediction_png
 load_split_entries = _load_split_entries
 gt_mask_path = _gt_mask_path
-align_pred_to_gt = _align_pred_to_gt
 
 
 def export_per_organ_metrics_csv(evaluator: MetricsEvaluator, organs: List[str], output_path: Path) -> None:
@@ -236,7 +221,6 @@ def evaluate_nnunet_split_predictions(
     data_root: Path,
     output_dir: Path,
     split: str = "test",
-    eval_size: Optional[int] = PFUS1_BASELINE_EVAL_SIZE,
 ) -> tuple[MetricsEvaluator, Dict[str, Any]]:
     split_entries = _load_split_entries(case_mapping_path, split)
     return evaluate_nnunet_predictions_for_entries(
@@ -245,7 +229,6 @@ def evaluate_nnunet_split_predictions(
         data_root=data_root,
         output_dir=output_dir,
         split_label=split,
-        eval_size=eval_size,
     )
 
 
@@ -255,7 +238,6 @@ def evaluate_nnunet_test_predictions(
     case_mapping_path: Path,
     data_root: Path,
     output_dir: Path,
-    eval_size: Optional[int] = PFUS1_BASELINE_EVAL_SIZE,
 ) -> tuple[MetricsEvaluator, Dict[str, Any]]:
     """Backward-compatible wrapper for held-out test evaluation."""
     return evaluate_nnunet_split_predictions(
@@ -264,7 +246,6 @@ def evaluate_nnunet_test_predictions(
         data_root=data_root,
         output_dir=output_dir,
         split="test",
-        eval_size=eval_size,
     )
 
 
@@ -314,16 +295,6 @@ def main() -> None:
         choices=("test", "val"),
         default="test",
         help="Case-mapping split to evaluate (default: test).",
-    )
-    p.add_argument(
-        "--eval-size",
-        type=int,
-        default=PFUS1_BASELINE_EVAL_SIZE,
-        help=(
-            "Square side for nearest-neighbor pred/GT resize before metrics "
-            f"(default {PFUS1_BASELINE_EVAL_SIZE}, U-Net/SAM/BAP-MOS parity). "
-            "Use 0 for native resolution."
-        ),
     )
     p.add_argument(
         "--log-wandb",
@@ -379,7 +350,6 @@ def main() -> None:
         data_root=Path(data_root_resolved),
         output_dir=out_dir,
         split=split,
-        eval_size=args.eval_size,
     )
     write_method_evaluation_meta(
         out_dir,

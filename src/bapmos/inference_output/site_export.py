@@ -90,7 +90,6 @@ def export_stratified_sites(
     distance_unit: str,
     checkpoint: str | Path,
     method_slug: str,
-    eval_size: Optional[int],
     viz_kwargs: Mapping[str, Any],
     evaluation_meta_extra: Optional[MetaExtraFn] = None,
     run_name: Optional[str] = None,
@@ -148,7 +147,6 @@ def export_stratified_sites(
             checkpoint=checkpoint,
             data_root=data_root,
             method_slug=method_slug,
-            eval_size=eval_size,
             evaluation_meta_extra=extra,
             **dict(viz_kwargs),
         )

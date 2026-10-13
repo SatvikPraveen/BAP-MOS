@@ -9,11 +9,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import cv2
-import numpy as np
 import torch
 
-from bapmos.external_baselines.baseline_training_protocol import PFUS1_BASELINE_EVAL_SIZE
 from bapmos.external_baselines.common import imagenet_normalize_bchw, resize_for_baseline
 from bapmos.external_baselines.unet.train_multiclass import (
     UNetMultiOrganTrainer,
@@ -42,7 +39,6 @@ def run_unet_test_export(
     save_visualizations: bool | None = None,
     force_inference_output: bool = False,
     device: str = "cuda",
-    eval_size: int | None = PFUS1_BASELINE_EVAL_SIZE,
 ) -> None:
     checkpoint = resolve_under_project(checkpoint)
     run_dir = checkpoint.parent
@@ -78,16 +74,10 @@ def run_unet_test_export(
     @torch.no_grad()
     def predict_fn(image_rgb, mask_multi, fn: str):
         del fn
-        x, y = resize_for_baseline(image_rgb, mask_multi, size=256)
+        x, _ = resize_for_baseline(image_rgb, mask_multi, size=256)
         xb = imagenet_normalize_bchw(x.to(trainer.device))
         logits = trainer.model(xb)
-        pred_lr = multiclass_pred_uint8_from_logits(logits)
-        if hasattr(mask_multi, "numpy"):
-            mask_multi = mask_multi.numpy()
-        h, w = mask_multi.shape[:2]
-        return cv2.resize(pred_lr.astype(np.float32), (w, h), interpolation=cv2.INTER_NEAREST).astype(
-            np.uint8
-        )
+        return multiclass_pred_uint8_from_logits(logits)
 
     viz_kwargs = export_viz_kwargs_for_data_root(
         data_root,
@@ -109,7 +99,6 @@ def run_unet_test_export(
         distance_unit=unit,
         checkpoint=checkpoint,
         method_slug="u_net",
-        eval_size=eval_size,
         viz_kwargs=viz_kwargs,
         run_name=run_name,
         evaluation_meta_extra=lambda label: {
@@ -136,15 +125,6 @@ def main() -> None:
     p.add_argument("--viz-pdf-max", type=int, default=None)
     p.add_argument("--force-inference-output", action="store_true")
     p.add_argument("--device", type=str, default="cuda")
-    p.add_argument(
-        "--eval-size",
-        type=int,
-        default=PFUS1_BASELINE_EVAL_SIZE,
-        help=(
-            "Square side for nearest-neighbor pred/GT resize before MSD/HD95 "
-            f"(default {PFUS1_BASELINE_EVAL_SIZE}). Use 0 for native resolution."
-        ),
-    )
     args = p.parse_args()
 
     run_unet_test_export(
@@ -155,7 +135,6 @@ def main() -> None:
         viz_pdf_max=args.viz_pdf_max,
         force_inference_output=bool(args.force_inference_output),
         device=args.device,
-        eval_size=args.eval_size,
     )
     print(f"Done → {args.output_dir}")
 

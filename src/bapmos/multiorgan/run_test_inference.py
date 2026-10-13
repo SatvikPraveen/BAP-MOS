@@ -9,12 +9,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import cv2
-import numpy as np
 import torch
 
 from bapmos.evaluation.test_panels import distance_unit_short
-from bapmos.external_baselines.baseline_training_protocol import PFUS1_BASELINE_EVAL_SIZE
 from bapmos.inference_output.pfus1_defaults import export_viz_kwargs_for_data_root
 from bapmos.inference_output.protocol import require_primary_inference_seed_run
 from bapmos.inference_output.site_export import (
@@ -26,13 +23,6 @@ from bapmos.inference_output.site_export import (
 from bapmos.metrics.baseline_validation_metrics import multiclass_pred_uint8_from_logits
 from bapmos.paths import resolve_under_project
 from bapmos.train.training_taxonomy import get_baseline_taxonomy_profile
-
-
-def _resize_pred(pred_lr: np.ndarray, hw: tuple[int, int]) -> np.ndarray:
-    h, w = hw
-    return cv2.resize(pred_lr.astype(np.float32), (w, h), interpolation=cv2.INTER_NEAREST).astype(
-        np.uint8
-    )
 
 
 def _prompt_type(cfg: dict, checkpoint: Path) -> str:
@@ -73,7 +63,6 @@ def run_multiorgan_sam_test_export(
     viz_pdf_max: int | None = None,
     force_inference_output: bool = False,
     device: str = "cuda",
-    eval_size: int | None = PFUS1_BASELINE_EVAL_SIZE,
 ) -> None:
     checkpoint = resolve_under_project(checkpoint)
     run_dir = checkpoint.parent
@@ -121,9 +110,7 @@ def run_multiorgan_sam_test_export(
             return None
         logits, _gt = out
         pred_lr = multiclass_pred_uint8_from_logits(logits)
-        if hasattr(mask_multi, "numpy"):
-            mask_multi = mask_multi.numpy()
-        return _resize_pred(pred_lr, mask_multi.shape[:2])
+        return pred_lr
 
     export_stratified_sites(
         data_root=data_root,
@@ -134,7 +121,6 @@ def run_multiorgan_sam_test_export(
         distance_unit=unit,
         checkpoint=checkpoint,
         method_slug=method_slug,
-        eval_size=eval_size,
         viz_kwargs=viz_kwargs,
         run_name=run_name,
         evaluation_meta_extra=lambda label: {
@@ -166,15 +152,6 @@ def main() -> None:
         help="Allow export for non-primary (non-seed-42) runs.",
     )
     p.add_argument("--device", type=str, default="cuda")
-    p.add_argument(
-        "--eval-size",
-        type=int,
-        default=PFUS1_BASELINE_EVAL_SIZE,
-        help=(
-            "Square side for nearest-neighbor pred/GT resize before MSD/HD95 "
-            f"(default {PFUS1_BASELINE_EVAL_SIZE}). Use 0 for native resolution."
-        ),
-    )
     args = p.parse_args()
 
     run_multiorgan_sam_test_export(
@@ -185,7 +162,6 @@ def main() -> None:
         viz_pdf_max=args.viz_pdf_max,
         force_inference_output=bool(args.force_inference_output),
         device=args.device,
-        eval_size=args.eval_size,
     )
     print(f"Done → {args.output_dir}")
 
