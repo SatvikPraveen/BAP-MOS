@@ -29,8 +29,11 @@ in its `evaluation_meta.json`.
 
 Exports written before this rule existed may have scored distances on a shared
 256×256 grid with native spacing, which misstates millimetre distances by the resize
-factor. Re-score them from their saved `predictions/multiclass/*_pred_ids.png` with
-`python -m bapmos.results.recompute_native_metrics run --corpus <prostate|bladder>`.
+factor. Re-run the method's `run_test_inference` export to score it on the native
+grid. `python -m bapmos.results.recompute_native_metrics run` re-scores without
+inference, but only for exports that saved `*_pred_ids.png` for every test slice
+(the default protocol saves the first 10). `ingest-exports` only reads metrics whose
+grid is recorded as native.
 
 ## Prostate multi-site rule (critical)
 
