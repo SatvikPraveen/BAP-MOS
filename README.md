@@ -19,18 +19,11 @@ BAP-MOS is a bandit-based adaptive prompting framework for boundary-sensitive mu
 
 The framework is evaluated on prostate TRUS and bladder PFUS ultrasound datasets using SAM/MedSAM-based segmentation backbones.
 
-<p align="center">
-  <img src="assets/bapmos_overview.svg" alt="BAP-MOS framework: (A) an outer TPE loop searches the prompt-selection parameters; (B) an inner loop with a per-organ UCB-Tuned prompt selector, organ-scaled prompt geometry, a SAM segmentation model with frozen encoders and a trainable mask decoder, and a boundary-sensitive composite reward." width="100%">
-</p>
+## Framework
 
-**(A)** An outer TPE loop searches the prompt-selection parameters (τ, α, r<sub>min</sub>, W, K). **(B)** For each candidate, the inner loop fine-tunes only the mask decoder: **(1)** a UCB-Tuned bandit per organ selects a box, point or combined prompt, **(2)** the prompt is built with an organ-scaled negative ring, **(3)** the frozen SAM/MedSAM encoders feed the trainable mask decoder, and **(4)** a Dice–MSD–HD95 reward on a validation probe updates each organ's bandit. Images show a phantom TRUS test slice and the BAP-MOS (SAM) prediction.
+![BAP-MOS framework](assets/BAPMOS_Framework.png)
 
-<details>
-<summary>Framework figure from the paper</summary>
-
-![BAP-MOS framework figure from the paper](assets/BAPMOS_Framework.png)
-
-</details>
+*Overview of the BAP-MOS framework.*
 
 ## Main results
 
