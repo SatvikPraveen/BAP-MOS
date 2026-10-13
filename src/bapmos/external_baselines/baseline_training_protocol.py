@@ -24,29 +24,6 @@ PFUS1_BATCH_SIZE = 128
 PFUS1_LR = 1e-4
 PFUS1_MAX_EPOCHS = 100
 PFUS1_PATIENCE = 20
-# Shared square for nearest-neighbor pred/GT resize before boundary MSD/HD95.
-# Used by all stratified test exports (U-Net, SAM box/points, MedSAM, BAP-MOS,
-# nnU-Net) so surface distances match decoder / baseline training resolution.
-# Pass 0 / None via ``resolve_boundary_eval_size`` to score at native resolution.
-PFUS1_BASELINE_EVAL_SIZE = 256
-# Alias: same constant applies beyond PFUS1 (e.g. pooled prostate test exports).
-BASELINE_BOUNDARY_EVAL_SIZE = PFUS1_BASELINE_EVAL_SIZE
-
-
-def resolve_boundary_eval_size(eval_size: int | None) -> int | None:
-    """Return square side for boundary metrics, or ``None`` for native resolution.
-
-    ``None`` / ``0`` / negative → native. Positive → that square side.
-    Callers that want the protocol default should pass ``PFUS1_BASELINE_EVAL_SIZE``
-    (the default on ``export_stratified_test_bundle``).
-    """
-    if eval_size is None:
-        return None
-    size = int(eval_size)
-    if size <= 0:
-        return None
-    return size
-
 # Non-PFUS1 (prostate pooled / case / simulation) defaults.
 CLINICAL_MAX_EPOCHS = 300
 CLINICAL_PATIENCE = 40

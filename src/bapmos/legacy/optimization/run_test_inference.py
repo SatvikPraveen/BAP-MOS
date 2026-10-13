@@ -14,7 +14,6 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 
 from bapmos.evaluation.test_panels import distance_unit_short
-from bapmos.external_baselines.baseline_training_protocol import PFUS1_BASELINE_EVAL_SIZE
 from bapmos.inference_output.export_bundle import export_stratified_test_bundle
 from bapmos.inference_output.pfus1_defaults import export_viz_kwargs_for_data_root
 from bapmos.inference_output.protocol import require_primary_inference_seed_run
@@ -34,7 +33,6 @@ def run_legacy_optimization_test_export(
     viz_pdf_max: int | None = None,
     force_inference_output: bool = False,
     device: str = "cuda",
-    eval_size: int | None = PFUS1_BASELINE_EVAL_SIZE,
 ) -> None:
     checkpoint = resolve_under_project(checkpoint)
     run_dir = checkpoint.parent
@@ -83,7 +81,6 @@ def run_legacy_optimization_test_export(
             checkpoint=checkpoint,
             data_root=data_root,
             method_slug=method_slug,
-            eval_size=eval_size,
             evaluation_meta_extra={
                 "family": "legacy_optimization",
                 "prompt_strategy": inference.prompt_strategy,
@@ -114,15 +111,6 @@ def main() -> None:
     p.add_argument("--viz-pdf-max", type=int, default=None)
     p.add_argument("--force-inference-output", action="store_true")
     p.add_argument("--device", type=str, default="cuda")
-    p.add_argument(
-        "--eval-size",
-        type=int,
-        default=PFUS1_BASELINE_EVAL_SIZE,
-        help=(
-            "Square side for nearest-neighbor pred/GT resize before MSD/HD95 "
-            f"(default {PFUS1_BASELINE_EVAL_SIZE}). Use 0 for native resolution."
-        ),
-    )
     args = p.parse_args()
 
     run_legacy_optimization_test_export(
@@ -133,7 +121,6 @@ def main() -> None:
         viz_pdf_max=args.viz_pdf_max,
         force_inference_output=bool(args.force_inference_output),
         device=args.device,
-        eval_size=args.eval_size,
     )
     print(f"Done → {args.output_dir}")
 
