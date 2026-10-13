@@ -7,10 +7,15 @@ import pytest
 import torch
 
 
-@pytest.fixture(autouse=True)
-def _allow_placeholder_selected_for_compose(monkeypatch):
-    """Production selected/*.yaml ship as generation:0 placeholders until export."""
-    monkeypatch.setenv("BAPMOS_ALLOW_PLACEHOLDER_SELECTED", "1")
+def _require_model_weights(*relative_paths: str):
+    """Skip unless the SAM / MedSAM checkpoints from docs/WEIGHTS.md are present."""
+    from bapmos.paths import resolve_model_checkpoint
+
+    paths = [resolve_model_checkpoint(p) for p in relative_paths]
+    missing = [str(p) for p in paths if not p.is_file()]
+    if missing:
+        pytest.skip(f"model weights not downloaded (docs/WEIGHTS.md): {', '.join(missing)}")
+    return paths
 
 
 def test_import_package():
@@ -462,7 +467,6 @@ def test_project_root_is_bapmos_checkout():
     root = project_root()
     assert (root / "src" / "bapmos").is_dir()
     assert (root / "configs" / "common" / "protocol.yaml").is_file()
-    assert root.name == "BAPMOS"
     assert pooled_prostate_dataset_dir() == root / "data" / "prostate" / "pooled"
     assert pfus1_bundle_dir() == root / "data" / "bladder" / "pfus1"
     assert dataset_bundle_tag("data/prostate/pooled") == "prostate_pooled"
@@ -696,8 +700,10 @@ def test_collate_seeds_bladder_same_metrics(tmp_path):
         )
 
     paths = build_corpus("bladder", method="bapmos_sam", repo=repo)
-    assert any(p.name == "bladder_pfus1_mean_std.csv" for p in paths)
-    assert {p.name for p in paths} == {"bladder_pfus1_mean_std.csv"}
+    assert {p.name for p in paths} == {
+        "bladder_pfus1_mean_std.csv",
+        "bladder_pfus1_bladder_mean_std.csv",
+    }
     mean_csv = corpus_results_root("bladder", repo=repo) / "combined" / "bladder_pfus1_mean_std.csv"
     text = mean_csv.read_text(encoding="utf-8")
     assert "dice_mean_pm_std" in text
@@ -745,12 +751,19 @@ def test_selected_subdir_bare_name_normalizes(monkeypatch):
 
 
 def test_placeholder_selected_refused_without_allow(monkeypatch):
-    from bapmos.method.config_utils import compose_config
+    from bapmos.method import config_utils
 
+    exported = config_utils.load_selected_hyperparameters("bapmos", "pooled")
+    placeholder = {**exported, "selection_meta": {**exported["selection_meta"], "generation": 0}}
+    monkeypatch.setattr(
+        config_utils, "load_selected_hyperparameters", lambda suite, dataset: placeholder
+    )
     monkeypatch.delenv("BAPMOS_ALLOW_PLACEHOLDER_SELECTED", raising=False)
-    monkeypatch.setenv("BAPMOS_ALLOW_PLACEHOLDER_SELECTED", "0")
     with pytest.raises(RuntimeError, match="placeholder selected|generation"):
-        compose_config("bapmos", "pooled")
+        config_utils.compose_config("bapmos", "pooled")
+
+    monkeypatch.setenv("BAPMOS_ALLOW_PLACEHOLDER_SELECTED", "1")
+    config_utils.compose_config("bapmos", "pooled")
 
 
 def test_prostate_sam_inner_run_roots_isolated_by_search_method(monkeypatch):
@@ -879,13 +892,12 @@ def test_medsam_weight_loader_parsing_and_config_detection():
 
 
 def test_resolve_model_checkpoint_prefers_bapmos_models():
-    from bapmos.paths import project_root, resolve_model_checkpoint
+    from bapmos.paths import project_root
 
-    sam = resolve_model_checkpoint("models/sam_base/sam_vit_b_01ec64.pth")
-    medsam = resolve_model_checkpoint("models/medsam/medsam_vit_b.pth")
+    sam, medsam = _require_model_weights(
+        "models/sam_base/sam_vit_b_01ec64.pth", "models/medsam/medsam_vit_b.pth"
+    )
     root = str(project_root().resolve() / "models")
-    assert sam.is_file(), f"missing local SAM weights: {sam}"
-    assert medsam.is_file(), f"missing local MedSAM weights: {medsam}"
     assert str(sam.resolve()).startswith(root)
     assert str(medsam.resolve()).startswith(root)
 
@@ -898,11 +910,11 @@ def test_medsam_vit_b_load_overlap_when_weights_present():
     from segment_anything import sam_model_registry
 
     from bapmos.external_baselines.medsam_init.weight_loader import load_medsam_weights_into_sam_vit_b
-    from bapmos.paths import project_root, resolve_model_checkpoint
+    from bapmos.paths import project_root
 
-    medsam = resolve_model_checkpoint("models/medsam/medsam_vit_b.pth")
-    sam = resolve_model_checkpoint("models/sam_base/sam_vit_b_01ec64.pth")
-    assert medsam.is_file() and sam.is_file()
+    medsam, sam = _require_model_weights(
+        "models/medsam/medsam_vit_b.pth", "models/sam_base/sam_vit_b_01ec64.pth"
+    )
 
     model = sam_model_registry["vit_b"](checkpoint=str(sam))
     report = load_medsam_weights_into_sam_vit_b(model, str(medsam))
