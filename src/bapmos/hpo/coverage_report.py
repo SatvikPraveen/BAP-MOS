@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from bapmos.hpo.catalog_search import SEARCH_PARAM_KEYS, TPE_N_STARTUP_TRIALS
+from bapmos.hpo.catalog_search import TPE_N_STARTUP_TRIALS
 from bapmos.hpo.convergence_report import default_report_output_dir, trial_duration_s
 from bapmos.hpo.figure_export import save_matplotlib_figure
 from bapmos.hpo.paths import HpoPaths

@@ -14,7 +14,6 @@ from bapmos.metrics.baseline_validation_metrics import organ_balanced_validation
 from bapmos.metrics.checkpoint_selection import (
     CheckpointScores,
     checkpoint_scores_from_evaluator,
-    is_better_checkpoint,
     parse_checkpoint_objective_config,
 )
 from bapmos.legacy.optimization.metrics import MetricsEvaluator

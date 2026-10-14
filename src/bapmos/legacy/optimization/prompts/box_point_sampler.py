@@ -13,7 +13,7 @@ Example: box_ratio=0.7, point_ratio=0.3
 
 import hashlib
 import numpy as np
-from typing import Dict, Tuple, Optional, List
+from typing import Dict
 
 
 class BoxPointSampler:

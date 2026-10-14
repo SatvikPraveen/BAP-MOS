@@ -43,7 +43,7 @@ from ..evaluation.baseline_epoch_monitoring import (
     init_external_baseline_wandb,
     validation_checkpoint_scores,
 )
-from ..optimization.metrics import MetricsEvaluator
+from bapmos.legacy.optimization.metrics import MetricsEvaluator
 from ..losses.kervadec_style import BoundaryDistMapCache, DecoderLossComputer, DecoderLossConfig
 from ..paths import (
     dataset_bundle_tag,

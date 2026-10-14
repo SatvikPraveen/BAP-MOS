@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import cv2
-import numpy as np
 
 from bapmos.paths import (
     pfus1_advanced_bundle_dir,

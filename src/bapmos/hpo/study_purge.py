@@ -293,7 +293,7 @@ def _refresh_saturation_flag(paths: HpoPaths, dataset: str) -> None:
     # Refresh payload when still saturated but metrics changed (e.g. after dedup).
     meta = load_saturation_flag(flag_path) or {}
     if meta.get("q") != report.q or meta.get("n_completed") != report.n_completed:
-        from bapmos.hpo.saturation_stop import write_saturation_flag, FINALIZE_REASON_SATURATED
+        from bapmos.hpo.saturation_stop import FINALIZE_REASON_SATURATED
         from dataclasses import asdict
         import json
         from datetime import datetime, timezone

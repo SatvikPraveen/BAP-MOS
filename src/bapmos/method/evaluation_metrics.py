@@ -22,7 +22,7 @@ from bapmos.metrics.baseline_validation_metrics import (
 )
 from bapmos.metrics.checkpoint_selection import (
     ptv_kfold_msd_mm,
-    resolve_ptv_evaluator_organ,
+    resolve_ptv_evaluator_organ,  # noqa: F401  (re-exported for bap_mos_trainer)
 )
 from bapmos.metrics.evaluation_grid import to_reference_grid
 from bapmos.legacy.optimization.metrics import MetricsEvaluator
@@ -33,6 +33,7 @@ from bapmos.method.reward import OrganProbeMetrics
 from bapmos.legacy.optimization.metrics.boundary_metrics import compute_all_metrics
 
 if TYPE_CHECKING:
+    from bapmos.method.bandit_policy import PerOrganBanditPolicy
     from bapmos.method.bap_mos_trainer import BAPMOSTrainer
 
 logger = logging.getLogger(__name__)

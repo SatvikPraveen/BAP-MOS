@@ -19,7 +19,6 @@ which lies in the closed interval [0, 1] when MSD ≥ 0
 
 from __future__ import annotations
 
-import math
 from typing import Dict, Mapping, Optional
 
 
