@@ -1458,7 +1458,7 @@ def cmd_plot_report(args: argparse.Namespace) -> None:
     through saturation). Saturation (K, ε) gates early stopping only — not plot data.
     """
     from bapmos.hpo.convergence_report import default_report_output_dir
-    from bapmos.method.scripts.plot_hpo_study import plot_suite
+    from bapmos.hpo.plot_hpo_study import plot_suite
 
     datasets = _resolve_datasets(args.dataset, args.hpo_suite)
     out_dir = Path(args.output_dir) if args.output_dir else default_report_output_dir(args.hpo_suite)
