@@ -1,22 +1,6 @@
-# Runtime artifact layout
+# Runtime layout
 
-Empty directories under `BAPMOS/` matching training / HPO / test-export paths.
-Jobs fill them; empty folders are not completed runs.
-
-## Three artifact trees
-
-```text
-runs/prostate/…/<run_folder>/best_checkpoint.pth     # training
-inference_output/prostate/pooled/<method>/<export>/   # stratified test export
-results/prostate/pooled/by_seed/<method>/<run>.csv    # per-seed metrics
-results/prostate/pooled/combined/                     # paper mean±std (site=pooled)
-```
-
-Inference exports are written under `BAPMOS/inference_output/`.
-
-Each prostate export folder contains `simulation/`, `case1/`, `case2/`, and `sites.json`.
-
-## Directory map
+## Directories created at run time (not committed)
 
 ```text
 optuna_studies/
@@ -25,26 +9,36 @@ optuna_studies/
 
 runs/
   prostate/
-    baselines/{unet/unet_pooled_seed*, medsam_init/medsam_pooled_seed*, nnunet}/
-    # SAM-box decoder is the same recipe as legacy/box — do not duplicate under baselines/sam_box
     bapmos/
-      outer_loop/{tpe,random,greedy,heuristic,medsam}/   # trial_* after HPO
-      inner_loop/{tpe,random,greedy,heuristic,medsam}/pooled_seed*/
-    legacy/{box,point,box_point,boxpoint_box_point,ucb1_*,epsilon_*}/
-      # box/ == SAM ViT-B + box prompts (CE+Dice); use this instead of baselines/sam_box
+      outer_loop/{tpe,random,greedy,heuristic,medsam}/       # search trials
+      inner_loop/{tpe,random,greedy,heuristic,medsam}/<run_name>/
+    baselines/
+      unet/<run_name>/
+      medsam_init/<run_name>/
+    legacy/
+      box/<run_name>/                                         # also the SAM baseline
+      point/<run_name>/
+      box_point/<run_name>/
+      boxpoint_box_point/<run_name>/
+      {ucb1_global,ucb1_per_organ,epsilon_greedy_per_organ,epsilon_decay_per_organ}/<run_name>/
   bladder/
-    baselines/…
-    bapmos/{outer_loop,inner_loop}/{sam,medsam}/…
+    bapmos/{outer_loop,inner_loop}/{sam,medsam}/
+    baselines/{unet,medsam_init}/<run_name>/
+    legacy/box/<run_name>/
 
 inference_output/
-  prostate/pooled/<method>/{simulation,case1,case2}/
-    predictions/multiclass | visualizations/difference | metrics
-  bladder/pfus1/<method>/…
+  prostate/pooled/<method>/<run_name>/{simulation,case1,case2}/
+  bladder/pfus1/<method>/<run_name>/
 
 results/
   prostate/pooled/{by_seed/<method>,combined}/
   bladder/pfus1/{by_seed/<method>,combined}/
 ```
 
-Canonical seed folder names: `pooled_seed42` / `pooled_seed43_rep2` / `pooled_seed44_rep3`
-(and bladder `pfus1_seed*`). See `docs/SEEDS.md`.
+The BAP-MOS trainer takes its run folder from the suite's `run_root`. The baseline and legacy
+trainers write where `--run_root` and `--run_name` point; the paths above assume the commands
+in [`RUNNING.md`](RUNNING.md). nnU-Net writes to your `nnUNet_results` directory.
+
+Each run folder holds `best_checkpoint.pth`, `last_checkpoint.pth` and `config.json`.
+Test-export contents: [`RESULTS.md`](RESULTS.md#test-export-layout). Run names:
+[`SEEDS.md`](SEEDS.md).

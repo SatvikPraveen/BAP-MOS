@@ -1,29 +1,67 @@
 # Preprocessing
 
-## Required input layout
+Neither dataset is distributed with this repository. Place the source data as described below,
+or symlink existing processed folders into `data/`. Run every command from the repository root
+with `src/` on `PYTHONPATH`.
 
-Real data are **not** shipped. Place or symlink corpora under `data/` as below
-(see also `data/prostate/README.md` and `data/bladder/README.md`).
+## Prostate TRUS
 
-### Prostate (pooled)
+The prostate corpus has three sites: a phantom simulation and two clinical cohorts (`case1`,
+`case2`). Training uses the pooled corpus built from all three.
 
-Expected under `data/prostate/pooled/` (after build, or via symlink):
+### Input layout
+
+DICOM inputs (MR slices and RTSTRUCT), read by `run_rtstruct_masks`:
+
+```text
+data/real_data/Case 1/Dicom/      # case1 (Case1/ or dcm_files/ also accepted)
+data/real_data/Case 2/Dicom/      # case2
+data/simulation_data/dicom/       # simulation
+```
+
+Per-site bundles, written by the steps below (or symlinked):
+
+```text
+data/prostate/{simulation,case1,case2}/
+  images/                         # slice PNGs (or <site>_dicom_png/)
+  masks/combined_masks/           # *_combined_mask.png
+  splits_stratified/              # train.txt, val.txt, test.txt
+```
+
+Pooled corpus:
 
 ```text
 data/prostate/pooled/
   images/
-  masks/
-  splits_stratified/
+  masks/combined_masks/
+  splits_stratified/              # train + val from all sites
+  site_tests/<site>/test.txt      # one test list per site
   spacing_contract.json
-  site_tests/
 ```
 
-Upstream site corpora (simulation / case1 / case2) with RTSTRUCT→mask bundles are required
-before building the pooled tree, or generate masks with `run_rtstruct_masks` from RS/RP inputs.
+### Steps
 
-### Bladder (PFUS1)
+```bash
+# 1. DICOM -> PNG slices and RTSTRUCT -> multiclass masks, per site
+python -m bapmos.preprocess.prostate.run_rtstruct_masks --case all
 
-Raw frames (preferred):
+# 2. Stratified train / val / test splits per site (seed 42)
+python -m bapmos.preprocess.prostate.create_stratified_splits --all --seed 42
+
+# 3. Build data/prostate/pooled/ (clinical files are symlinked; use --copy to copy)
+python -m bapmos.preprocess.prostate
+```
+
+`run_rtstruct_masks --case` also takes `case1`, `case2` or `simulation`.
+`create_stratified_splits --dataset` takes `simulation`, `case_1`, `case_2` or a path.
+`python -m bapmos.preprocess.prostate --dry-run` prints the pooling plan without writing.
+The modules live in `src/bapmos/preprocess/prostate/`.
+
+## Bladder (PFUS1)
+
+### Input layout
+
+Raw frames:
 
 ```text
 data/bladder/pfus1_raw/
@@ -32,65 +70,60 @@ data/bladder/pfus1_raw/
     frame_*.json
 ```
 
-Processed bundle (after preprocess, or via symlink):
+Processed bundle:
 
 ```text
 data/bladder/pfus1/
   masks/
-  splits_*/          # e.g. splits_patient_70_15_15_seed42/
-  # label registry / report metadata as produced by the bladder pipeline
+  splits_patient_70_15_15_seed42/           # train / val / test, split by patient
+  splits_hpo_tpe_patient_seed4242_p20/      # outer-loop search split
+  sam_embeddings/{sam_vit_b,medsam_vit_b}/  # cached image embeddings
 ```
 
-## Prostate (pooled)
+### Steps
 
 ```bash
-python -m bapmos.preprocess.prostate --help
-# Builds data/prostate/pooled/ from site corpora (simulation + case1 + case2)
-python -m bapmos.preprocess.prostate.create_stratified_splits --dataset case_1 --seed 42
-python -m bapmos.preprocess.prostate.run_rtstruct_masks --case case1
+# 1. JSON polygons -> masks, patient-level splits, label check
+python -m bapmos.preprocess.bladder
+
+# 2. Outer-loop search split (needed before the bladder outer loop)
+python -m bapmos.preprocess.bladder.create_hpo_splits --data_root data/bladder/pfus1
+
+# 3. Cached image embeddings (needed by the bladder inner loop)
+python -m bapmos.preprocess.bladder.precompute_sam_embeddings \
+  --init meta --sam_checkpoint models/sam_base/sam_vit_b_01ec64.pth \
+  --output_dir data/bladder/pfus1/sam_embeddings/sam_vit_b
+python -m bapmos.preprocess.bladder.precompute_sam_embeddings \
+  --init medsam --sam_checkpoint models/medsam/medsam_vit_b.pth \
+  --output_dir data/bladder/pfus1/sam_embeddings/medsam_vit_b
 ```
 
-Package layout: `src/bapmos/preprocess/prostate/` (`build_pooled`, RTSTRUCT export, stratified splits, spacing).
+Step 1 runs `convert`, `splits` and `verify`; `--step` runs one of them and `--dry-run` prints
+the plan.
 
-The pooled corpus is always written/read at `BAPMOS/data/prostate/pooled/`.
-Symlink an existing pooled tree into that path if you prefer not to rebuild.
+Step 2 takes 20% of the 77 training patients (seed 4242) as the search cohort and holds out 20%
+of that cohort as search validation. The original validation and test patients are not touched.
 
-## Bladder (PFUS1)
+Step 3: the frozen image encoder makes the bladder inner loop read cached embeddings
+(`use_cached_image_embeddings: true` in `experiments/bladder/bapmos/inner_loop/{sam,medsam}/version.yaml`).
+The output folders match `image_embedding_dir` in those files. By default the script encodes the
+`train`, `val` and `test` lists of `splits_patient_70_15_15_seed42` on `cuda` and stores
+`float16`. With `--init medsam`, the SAM ViT-B architecture comes from
+`--architecture_checkpoint` (default `models/sam_base/sam_vit_b_01ec64.pth`).
+
+The bladder checkpoint and search objective use the `Bladder` organ
+(`checkpoint_objective.objective_organ`). The modules live in `src/bapmos/preprocess/bladder/`.
+
+## Quality checks (optional)
 
 ```bash
-python -m bapmos.preprocess.bladder --help
-# convert JSON polygons → masks; patient splits → data/bladder/pfus1/
-```
-
-Package layout: `src/bapmos/preprocess/bladder/`. Compatibility shims remain under `bapmos.pfus1.*`.
-
-Checkpoint organ for bladder runs: `Bladder` (`checkpoint_objective.objective_organ`).
-
-## Delineation / mask overlaps
-
-```bash
-python -m bapmos.preprocess.delineation --help
 python -m bapmos.preprocess.delineation overlays --dataset case_1 --splits-subdir splits_stratified
 python -m bapmos.preprocess.delineation summarize
 python -m bapmos.preprocess.delineation organ-presence --all
-# PFUS1 overlays:
-python -m bapmos.preprocess.bladder.visualize_samples
+python -m bapmos.preprocess.bladder.visualize_samples   # PFUS1 overlays
 ```
 
-QA outputs default under `data/prostate/` (`qa_overlays/`, `slice_organ_presence/`, `rt_rs_rp_mask_summary/`).
+Outputs go under `data/prostate/` (`qa_overlays/`, `slice_organ_presence/`,
+`rt_rs_rp_mask_summary/`).
 
-## Inference export layout
-
-Test-split exports (via `bapmos.inference_output` helpers, e.g. `python -m bapmos.method.run_test_inference` and baseline `run_test_inference` modules) write under `BAPMOS/inference_output/`:
-
-```text
-predictions/                 # sibling of visualizations/
-  multiclass/*_pred_ids.png
-  *_pred.png
-visualizations/
-  *_viz.png|.pdf             # prediction overlays
-  difference/*_diff.png|.pdf # difference overlays (TP/FP/FN)
-metrics/
-```
-
-Implemented in `src/bapmos/inference_output/export_bundle.py` (`export_stratified_test_bundle`).
+The test-export folder layout is described in [`RESULTS.md`](RESULTS.md#test-export-layout).

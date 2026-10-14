@@ -1,96 +1,82 @@
 # Outer-loop search methods
 
-Methods currently defined for **prostate** under `experiments/prostate/bapmos/outer_loop/{tpe,random,greedy,heuristic}/`.
+The outer loop searches five BAP-MOS hyperparameters (the `searched_clip_scale_organ` space,
+defined in `src/bapmos/hpo/search_space.py`):
 
-**Bladder** does **not** ship that search-method family. It uses backbone suites under `experiments/bladder/bapmos/outer_loop/{sam,medsam}/` (`bapmos_bo_sam` / `bapmos_bo_medsam`) with the same 5-D `searched_clip_scale_organ` box and TPE. See `docs/EXPERIMENT_LADDER.md` and `experiments/bladder/bapmos/outer_loop/README.md`.
+| Key | Role | Range |
+|-----|------|-------|
+| `clip_max_mm` | Reward clip τ | integer in [5, 30] |
+| `alpha` | Ring scale α | [0.05, 0.15] |
+| `r_min` | Ring floor r_min (px) | integer in [2, 20] |
+| `window_size` | Sliding reward window W | {20, 25, …, 100} |
+| `block_size_batches` | Decision block K (batches) | {20, 25, …, 100} |
 
-BAP-MOS searches five hyperparameters in the `searched_clip_scale_organ` box:
+The objective is fold-balanced (5 folds) validation MSD on the primary organ, minimised. Every
+method has a budget of 100 trials, so the methods are directly comparable.
 
-| Key | Role |
-|-----|------|
-| `clip_max_mm` | Composite-reward clip τ |
-| `alpha` | Organ-scale ring scale |
-| `r_min` | Organ-scale ring floor (px) |
-| `window_size` | Sliding bandit memory |
-| `block_size_batches` | Decision-block length |
+The search-strategy comparison is defined for prostate only, under
+`experiments/prostate/bapmos/outer_loop/{tpe,random,greedy,heuristic}/`. PFUS1 uses TPE with the
+same search space, once per backbone (`bapmos_bo_sam`, `bapmos_bo_medsam`).
 
-**Objective:** validation PTV k-fold MSD (minimize). Default budget: **100 trials** for all methods.
+## Methods
 
-All methods use the same objective (validation MSD) and nominal trial budget (100), making search-method comparisons directly comparable.
+| Method | Suite | How it proposes trials |
+|--------|-------|------------------------|
+| TPE (main) | `bapmos_bo` | 20 start-up trials (1 baseline + 19 Latin-hypercube samples, seed 42), then Optuna TPE |
+| Random | `bapmos_bo_random` | Optuna `RandomSampler` over the same space |
+| Greedy | `bapmos_bo_greedy` | Coordinate-wise search over a 7-value grid per dimension |
+| Heuristic | `bapmos_bo_heuristic` | Fixed, deterministic catalog of candidates |
 
-## Methods in the public BAPMOS tree
+- TPE adapts its proposals to previous results.
+- Random samples independently of previous results.
+- Greedy is sequential: later probes start from the best configuration found so far.
+- Heuristic evaluates a fixed list; nothing adapts.
 
-| Method | Included? | How it proposes trials |
-|--------|-----------|-------------------------|
-| **TPE** | Yes (main) | Optuna TPE after a startup catalog |
-| **Random** | Yes (ablation) | Optuna `RandomSampler` |
-| **Greedy** | Yes (ablation) | Sequential coordinate-wise search over a fixed 7-point grid per dim |
-| **Heuristic** | Yes (ablation) | Fixed multi-tier catalog (no adaptive sampler) |
+The MedSAM search for prostate (`bapmos_bo_medsam_pooled`,
+`experiments/prostate/bapmos/outer_loop/medsam/`) is a separate TPE study with the same space
+and budget.
 
-**TPE** adaptively proposes trials based on previous observations.  
-**Random** search samples independently from the same search space (stochastic, but not adaptive to observed objectives).  
-**Greedy** performs sequential coordinate-wise search, where later probes depend on the best configurations found in earlier waves.  
-**Heuristic** evaluates a fixed, deterministic catalog of candidates.
+Configs: `experiments/prostate/bapmos/outer_loop/<method>/version.yaml`. Exports:
+`experiments/prostate/bapmos/inner_loop/selected/<method>/pooled.yaml` and
+`experiments/prostate/bapmos/inner_loop/medsam/selected/pooled.yaml`.
 
-Configs: `experiments/prostate/bapmos/outer_loop/{tpe,random,greedy,heuristic}/version.yaml`
-(plus independent MedSAM TPE at `outer_loop/medsam/version.yaml`).  
-Compose versions: `bapmos_outer_loop` / `_random` / `_greedy` / `_heuristic` / `bapmos_medsam_pooled_outer_loop`.  
-Selected exports: `inner_loop/selected/{tpe,random,greedy,heuristic}/pooled.yaml` and
-`inner_loop/medsam/selected/pooled.yaml`.
+Every method runs as `study_runner init`, then `study_runner run`
+([`RUNNING.md`](RUNNING.md#outer-loop-optional)).
 
----
+## Greedy
 
-## Heuristic search
+1. `init` enqueues the baseline trial (`clip=20`, `alpha=0.1`, `r_min=6`, `window=50`,
+   `block=50`) and writes `greedy_state.json` next to the study database.
+2. `run` trains it, then works through the dimensions in order `clip_max_mm`, `alpha`, `r_min`,
+   `window_size`, `block_size_batches`. For each dimension it probes 7 grid values with the
+   other four at the current best, keeps the best, and moves to the next dimension.
+3. Sweeps repeat until the budget of 100 trials is used.
 
-Heuristic is a **deterministic fixed catalog**: every trial is pre-listed; Optuna only executes the queue (`sampler: catalog`). There is no Bayesian / random adaptive proposal.
+`run` finalizes each wave and enqueues the next one itself. The subcommands
+`greedy-baseline-finalize`, `greedy-wave --wave <0-4>` and `greedy-finalize --wave <0-4>` do the
+same steps by hand, for example when several workers share one study.
 
-Experiment path: `experiments/prostate/bapmos/outer_loop/heuristic/`  
-Export: `experiments/prostate/bapmos/inner_loop/selected/heuristic/pooled.yaml`
+## Heuristic
 
-### Algorithm (`heuristic_catalog`)
+Every trial is listed in advance; Optuna only runs the queue (`sampler: catalog`). `init`
+enqueues the whole catalog. The catalog (`heuristic_catalog()` in
+`src/bapmos/hpo/catalog_search.py`) is built in tiers, deduplicated, and capped at 100 trials:
 
-Implemented in `src/bapmos/hpo/catalog_search.py` (`heuristic_catalog()`); see related helpers below and inline docstrings for suite / path details.
+1. Baseline (`clip=20`, `alpha=0.1`, `r_min=6`, `window=50`, `block=50`).
+2. One-dimension sweeps over clip, alpha, r_min, window and block, others at baseline.
+3. A sparse geometry lattice: `clip ∈ {5, 13, 21, 30}` × `alpha ∈ {0.05, 0.10, 0.15}` ×
+   `r_min ∈ {2, 8, 14, 20}`, bandit settings at baseline.
+4. A bandit grid: `window × block` on `{20, 40, 60, 80, 100}`, geometry at baseline.
 
-Candidates are built in **priority tiers**, deduplicated, then capped at `max_trials` (default 100):
+Clip, alpha and r_min levels reuse the greedy 7-value grids.
 
-1. **Baseline** — enqueue point (`clip=20`, `alpha=0.1`, `r_min=6`, `window=50`, `block=50`)
-2. **Univariate sweeps** — vary one of clip / alpha / r_min / window / block over coarse grids; others fixed at baseline
-3. **Sparse 3-D geometry lattice** — `clip ∈ {5,13,21,30}` × `alpha ∈ {0.05,0.10,0.15}` × `r_min ∈ {2,8,14,20}`; bandit dims at baseline
-4. **Bandit joint grid** — `window × block` on `{20,40,60,80,100}`; geometry at baseline
+## Related files
 
-Grid levels for clip/alpha/r_min reuse the same 7-point greedy grids; window/block use 5-point `{20…100}`.
-
-### How it is run
-
-- Suite id: `bapmos_bo_heuristic`
-- Spec in `src/bapmos/hpo/paths.py`:
-  - `search_method: heuristic`
-  - `sampler: catalog`
-  - `selected_subdir: selected/heuristic`
-  - Study and trial subdir names: see `src/bapmos/hpo/paths.py` (outer_loop search / inner_loop production naming)
-- Enqueue: `study_runner.enqueue_heuristic_catalog()` walks `heuristic_catalog()` and adds trials
-- Saturation stop treats heuristic like greedy (catalog methods) in `src/bapmos/hpo/saturation_stop.py`
-
-### Related files (heuristic)
-
-| File | Role |
-|------|------|
-| `src/bapmos/hpo/catalog_search.py` | `heuristic_catalog`, grids, greedy helpers |
-| `src/bapmos/hpo/paths.py` | Suite `bapmos_bo_heuristic` and subdir names |
-| `src/bapmos/hpo/study_runner.py` | `enqueue_heuristic_catalog`, study create/run |
-| `src/bapmos/hpo/search_space.py` | Maps suite → `searched_clip_scale_organ` |
-| `experiments/prostate/bapmos/inner_loop/selected/heuristic/pooled.yaml` | Exported (or placeholder) best params |
-
----
-
-## Greedy (brief)
-
-- Baseline trial, then waves: for each dim in `(clip, alpha, r_min, window, block)`, probe 7 grid values with others fixed at current best; pick best; next dim; repeat until 100 trials.
-- Later waves depend on earlier best configurations (sequential coordinate-wise search).
-- State: `greedy_state.json` under the study directory.
-- CLI helpers in `src/bapmos/hpo/study_runner.py`: `greedy-wave`, `greedy-finalize`, `greedy-baseline-finalize`.
-
-## Random (brief)
-
-- Optuna `RandomSampler` over the same continuous/discrete search space as TPE; same trial budget.
-- Samples independently of previous objective values (stochastic, non-adaptive).
+| File | Contents |
+|------|----------|
+| `src/bapmos/hpo/paths.py` | Suite definitions and study folders |
+| `src/bapmos/hpo/study_runner.py` | `init`, `run`, `export` and the greedy subcommands |
+| `src/bapmos/hpo/startup_catalog.py` | TPE start-up catalog |
+| `src/bapmos/hpo/catalog_search.py` | Greedy grids and the heuristic catalog |
+| `src/bapmos/hpo/search_space.py` | Search space |
+| `src/bapmos/hpo/saturation_stop.py` | Early stop for TPE and random studies |

@@ -1,29 +1,18 @@
 # Model weights
 
-Foundation checkpoints are **not** shipped in git. Place them under `BAPMOS/models/`
-(canonical standalone layout).
+Foundation-model checkpoints are not in the repository. Place them under `models/` in the
+repository root. The empty folders `models/sam_base/` and `models/medsam/` are committed;
+`*.pth` files are git-ignored.
 
-Empty layout dirs (`models/`, `models/sam_base/`, `models/medsam/`) are committed via
-`.gitkeep`; `*.pth` files are gitignored.
-
-Use of SAM and MedSAM weights follows the respective upstream licenses; this repo does
-not redistribute those model files.
-
-## Cluster / batch systems
-
-This package does not ship scheduler scripts. Wrap any `python -m` command from
-`docs/RUNNING.md` in your own batch system. If you add `#SBATCH --output` / `--error`
-paths, create their **parent directories before** the job starts — schedulers like Slurm
-open those files before any `mkdir` in the batch script runs.
+SAM and MedSAM weights are covered by their upstream licences. This repository does not
+redistribute them.
 
 ## SAM (ViT-B)
 
-- **Path:** `BAPMOS/models/sam_base/sam_vit_b_01ec64.pth`
-- **Source:** [Meta Segment Anything — model checkpoints](https://github.com/facebookresearch/segment-anything#model-checkpoints)
-- **Direct download:** https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth
+- Path: `models/sam_base/sam_vit_b_01ec64.pth`
+- Source: [Segment Anything model checkpoints](https://github.com/facebookresearch/segment-anything#model-checkpoints)
 
 ```bash
-# from BAPMOS/
 mkdir -p models/sam_base
 curl -L -o models/sam_base/sam_vit_b_01ec64.pth \
   https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth
@@ -31,46 +20,38 @@ curl -L -o models/sam_base/sam_vit_b_01ec64.pth \
 
 ## MedSAM (ViT-B)
 
-- **Path:** `BAPMOS/models/medsam/medsam_vit_b.pth`
-- **Source:** [bowang-lab/MedSAM](https://github.com/bowang-lab/MedSAM)
-- **Preferred download (Zenodo):** https://zenodo.org/records/10689643  
-  Direct file: https://zenodo.org/records/10689643/files/medsam_vit_b.pth
-- **Alternate:** [Google Drive folder](https://drive.google.com/drive/folders/1ETWmi4AiniJeWOt6HAsYgTjYv_fkgzoN) (official MedSAM README mirror)
+- Path: `models/medsam/medsam_vit_b.pth`
+- Source: [bowang-lab/MedSAM](https://github.com/bowang-lab/MedSAM)
+- Download: [Zenodo record 10689643](https://zenodo.org/records/10689643), or the
+  [Google Drive folder](https://drive.google.com/drive/folders/1ETWmi4AiniJeWOt6HAsYgTjYv_fkgzoN)
+  linked from the MedSAM README
 
 ```bash
-# from BAPMOS/
 mkdir -p models/medsam
 curl -L -o models/medsam/medsam_vit_b.pth \
   https://zenodo.org/records/10689643/files/medsam_vit_b.pth
 ```
 
-### MedSAM-init baseline overlap check
+### MedSAM weight check
 
-The external baseline ``medsam_init`` builds SAM ViT-B from ``sam_vit_b_01ec64.pth``, overlays
-MedSAM weights, then fine-tunes the mask decoder only. On training start, ``config.json`` records
-``medsam_missing_keys``, ``medsam_unexpected_keys``, ``medsam_overlap_ratio``, and related fields.
-
-For canonical ``medsam_vit_b.pth`` (Zenodo), expect **very few** missing keys (typically 0–10)
-and overlap ratio **≥ 95%**. Loads outside those bounds fail by default.
-
-**Quick preflight** (no training run required):
+The MedSAM baseline builds SAM ViT-B from `sam_vit_b_01ec64.pth` and loads the MedSAM weights on
+top. Check the overlap before training:
 
 ```bash
 python -m bapmos.external_baselines.medsam_init.verify_weights
 ```
 
-Override thresholds via ``MEDSAM_MAX_MISSING_KEYS`` (default 50) or
-``MEDSAM_MIN_OVERLAP_RATIO`` (default 0.95).
+Loading fails if more than `MEDSAM_MAX_MISSING_KEYS` (default 50) keys are missing, or if the
+overlap ratio is below `MEDSAM_MIN_OVERLAP_RATIO` (default 0.95). The canonical Zenodo file
+typically misses 0–10 keys. Both thresholds can be set as environment variables, or passed to
+`verify_weights` as `--max-missing-keys` and `--min-overlap-ratio`.
 
-MedSAM encoder weights are **re-applied** on training resume and on standalone
-``run_test_inference`` so test evaluation uses the same backbone as training.
+The MedSAM baseline records `medsam_missing_keys`, `medsam_unexpected_keys` and
+`medsam_overlap_ratio` in its run's `config.json`. MedSAM weights are re-applied on resume and in
+`run_test_inference`, so test evaluation uses the training backbone.
 
-## Path resolution
+## Paths
 
-Relative model paths are resolved under `BAPMOS/models/`.
-For a standalone checkout, place all required pretrained weights there.
-
-## Trained run checkpoints
-
-Fine-tuned / production checkpoints (`best_checkpoint.pth`, etc.) live under `runs/`, not under
-`models/`. Inference exports go to `BAPMOS/inference_output/`.
+Relative model paths in configs and CLI flags resolve under `models/`. Fine-tuned checkpoints
+(`best_checkpoint.pth`, `last_checkpoint.pth`) are written under `runs/`, and test exports under
+`inference_output/` ([`RUNTIME_LAYOUT.md`](RUNTIME_LAYOUT.md)).
