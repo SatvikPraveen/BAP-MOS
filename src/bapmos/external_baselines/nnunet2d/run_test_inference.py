@@ -50,6 +50,12 @@ def run_nnunet_test_export(
     experiment_seed: Optional[int] = None,
     run_name: Optional[str] = None,
 ) -> None:
+    """Package existing ``nnUNetv2_predict`` PNGs into the stratified ``inference_output`` layout.
+
+    No model is run: each test filename is mapped to its nnU-Net ``case_id`` via
+    ``case_mapping.json`` and the matching prediction PNG is read and scored against the
+    bundle's ground truth. Metrics and first-N panels are written under ``output_dir``.
+    """
     data_root = Path(resolve_under_project(data_root))
     predictions_dir = Path(resolve_under_project(predictions_dir))
     output_dir = Path(resolve_under_project(output_dir))
@@ -67,6 +73,8 @@ def run_nnunet_test_export(
     unit = distance_unit_short(taxonomy.taxonomy_name)
 
     def predict_fn(image_rgb, mask_multi, fn: str):
+        """Load the saved nnU-Net prediction PNG for one test slice."""
+        # Look up by full filename first, then by stem (mapping stores both keys).
         del image_rgb, mask_multi
         case_id = id_to_case.get(fn) or id_to_case.get(Path(fn).stem)
         if case_id is None:
@@ -111,6 +119,7 @@ def run_nnunet_test_export(
 
 
 def main() -> None:
+    """CLI entry point for :func:`run_nnunet_test_export`."""
     p = argparse.ArgumentParser(
         description=(
             "Export nnU-Net test split to inference_output/ "

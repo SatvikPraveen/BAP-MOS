@@ -77,6 +77,13 @@ def _apply_training_cli_overrides(
 
 
 def main() -> None:
+    """Train (or resume / test-only evaluate) the MedSAM-init box-prompt decoder baseline.
+
+    Builds SAM ViT-B via ``SAMMultiOrganTrainer`` (decoder-only, AdamW with
+    weight_decay 1e-4, flat LR), overlays MedSAM weights, and writes ``config.json``
+    and checkpoints under ``<run_root>/medsam_init/<run_name>/``. Epoch, patience and
+    batch defaults follow the PFUS1 vs. clinical production protocol.
+    """
     root = project_root()
     p = argparse.ArgumentParser(description="MedSAM-init SAM multi-organ box baseline")
     p.add_argument("--data_root", type=str, default=None)

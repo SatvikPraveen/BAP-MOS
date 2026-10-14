@@ -40,6 +40,12 @@ def run_unet_test_export(
     force_inference_output: bool = False,
     device: str = "cuda",
 ) -> None:
+    """Export stratified test-split predictions and panels for a U-Net checkpoint.
+
+    Rebuilds ``UNetMultiOrganTrainer`` from the run config, loads ``model_state`` and writes
+    per-site results under ``output_dir``. Refuses non-primary-seed runs unless
+    ``force_inference_output``.
+    """
     checkpoint = resolve_under_project(checkpoint)
     run_dir = checkpoint.parent
     cfg = load_run_config(run_dir, checkpoint)
@@ -73,8 +79,10 @@ def run_unet_test_export(
 
     @torch.no_grad()
     def predict_fn(image_rgb, mask_multi, fn: str):
+        """Return the 256x256 U-Net label map for one test slice (the export upsamples it)."""
         del fn
         x, _ = resize_for_baseline(image_rgb, mask_multi, size=256)
+        # 256x256 prediction; the export bundle upsamples it to the GT grid (nearest).
         xb = imagenet_normalize_bchw(x.to(trainer.device))
         logits = trainer.model(xb)
         return multiclass_pred_uint8_from_logits(logits)
@@ -110,6 +118,7 @@ def run_unet_test_export(
 
 
 def main() -> None:
+    """CLI entry point for :func:`run_unet_test_export`."""
     p = argparse.ArgumentParser(
         description=(
             "Export U-Net test split to inference_output/ "

@@ -20,6 +20,7 @@ from .dataset_single_organ import SingleOrganDataset
 
 
 def stable_rng_from_id(sample_id: str, base_seed: int):
+    """Return a NumPy generator seeded by an FNV-1a hash of ``sample_id`` + ``base_seed``."""
     h = 2166136261
     for c in (sample_id + str(base_seed)):
         h ^= ord(c)
@@ -28,6 +29,7 @@ def stable_rng_from_id(sample_id: str, base_seed: int):
 
 
 def dice_coefficient(pred, gt):
+    """Binary Dice between ``pred`` and ``gt``; 1.0 when both are empty."""
     pred = pred.astype(bool)
     gt = gt.astype(bool)
     inter = np.logical_and(pred, gt).sum()
@@ -38,6 +40,10 @@ def dice_coefficient(pred, gt):
 
 
 class SingleOrganInference:
+    """Load a single-organ SAM decoder checkpoint and predict binary masks with GT-derived prompts.
+
+    The organ, prompt type (box or points) and seed come from the checkpoint/config.
+    """
     def __init__(self, checkpoint_path: Path, device: Optional[str] = None):
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -77,6 +83,7 @@ class SingleOrganInference:
     def _points_from_gt(self, mask_bin, original_size, image_id):
         from bapmos.multiorgan.dataset_multi_organ import sample_negative_points_from_ring, sample_positive_points
 
+        # Eval-time sampling (no epoch offset), keyed on the file stem rather than the full filename.
         rng = stable_rng_from_id(image_id, self.seed)
         organ_u8 = (mask_bin > 0).astype(np.uint8)
         if organ_u8.sum() == 0:
@@ -141,14 +148,20 @@ class SingleOrganInference:
         )
         logits = torch.zeros(1, 2, 256, 256, device=self.device, dtype=torch.float32)
         logits[0, 1, :, :] = low_res_mask[0, 0]
+        # Background logit = logit(1 - organ prob), so the 2-class softmax matches the decoder's sigmoid.
         organ_probs = torch.sigmoid(logits[:, 1:, :, :])
         background_prob = 1.0 - organ_probs.max(dim=1, keepdim=True)[0]
         logits[:, 0:1, :, :] = torch.logit(background_prob, eps=1e-7)
         pred_small = torch.argmax(logits, dim=1).cpu().numpy()[0].astype(np.uint8)
+        # Nearest-neighbour upsample of the 256x256 label map straight to native (H, W).
         pred_full = cv2.resize(pred_small, (original_size[1], original_size[0]), interpolation=cv2.INTER_NEAREST)
         return pred_full
 
     def run_split(self, data_root: str, split: str, out_dir: Path):
+        """Predict every slice of ``split`` that contains the organ and write results to ``out_dir``.
+
+        Saves ``predictions/<id>_pred.png`` (0/255) and per-slice Dice in ``metrics.csv``.
+        """
         out_dir.mkdir(parents=True, exist_ok=True)
         pred_dir = out_dir / "predictions"
         pred_dir.mkdir(parents=True, exist_ok=True)
@@ -176,6 +189,7 @@ class SingleOrganInference:
 
 
 def main():
+    """CLI entry point: run single-organ inference on one split (default output ``<ckpt_dir>/inference_<split>``)."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoint", type=str, required=True)
     ap.add_argument("--data_root", type=str, default=None)

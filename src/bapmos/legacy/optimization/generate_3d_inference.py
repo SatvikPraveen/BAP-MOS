@@ -522,6 +522,11 @@ def find_all_experiments(viz_base: Path):
 
 
 def main():
+    """CLI entry point: build 3D views from saved 2D test predictions for the selected experiments.
+
+    Reads ``<viz_base>/<phase>/<experiment>/test/predictions`` and writes under
+    ``<output_base>``; requires the external 3D renderer modules. Returns a process exit code.
+    """
     parser = argparse.ArgumentParser(description='Generate 3D inference visualizations for optimization experiments')
     parser.add_argument('--viz_base', type=str, default='Optimization_Visualization',
                        help='Base directory containing 2D visualizations')

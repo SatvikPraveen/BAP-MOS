@@ -112,6 +112,10 @@ def resolve_case_mapping_path(
     dataset_id: int,
     dataset_name: str,
 ) -> Path | None:
+    """Locate ``case_mapping.json``: ``BAPMOS_NNUNET_CASE_MAPPING`` if set, else under ``$nnUNet_raw``.
+
+    Returns ``None`` when the file does not exist.
+    """
     env = os.environ.get("BAPMOS_NNUNET_CASE_MAPPING", "").strip()
     if env:
         p = Path(env).expanduser()

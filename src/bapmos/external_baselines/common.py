@@ -12,6 +12,7 @@ import torch.nn.functional as F
 
 
 def seed_everything(seed: int, deterministic: bool = False) -> None:
+    """Seed Python, NumPy and torch (CPU + all CUDA); optionally force deterministic cuDNN."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -22,6 +23,7 @@ def seed_everything(seed: int, deterministic: bool = False) -> None:
 
 
 def seed_worker(worker_id: int) -> None:
+    """DataLoader ``worker_init_fn``: reseed NumPy/``random`` from the worker's torch seed."""
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
@@ -99,6 +101,11 @@ def ce_dice_regional_loss(
 
 
 def mean_fg_dice_from_logits(logits: torch.Tensor, gt_long: torch.Tensor, num_classes: int) -> float:
+    """Mean argmax Dice over foreground classes ``1..num_classes-1`` for a batch.
+
+    Classes absent from both prediction and ground truth are skipped; returns 0.0
+    when every class is absent.
+    """
     probs = torch.softmax(logits, dim=1)
     pred = torch.argmax(probs, dim=1)
     dices = []
@@ -121,7 +128,7 @@ def external_run_dir(
     """
     ``<parent>/<subpackage>/<run_name>/`` under project root by default.
 
-    Default parent: ``runs/ExternalBaselines``. For PFUS1 cluster layout parity with
+    Default parent: ``runs/ExternalBaselines``. For PFUS1 layout parity with
     internal baselines, pass e.g. ``runs/pfus1/ExternalBaselines``.
     """
     from bapmos.paths import project_root

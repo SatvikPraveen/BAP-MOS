@@ -152,7 +152,8 @@ class EpsilonGreedyBandit:
                     selected_arm = max(self.arm_avg_rewards, key=self.arm_avg_rewards.get)
                     was_exploration = False
                 
-                # Decay epsilon
+                # Decay epsilon multiplicatively, floored at epsilon_min. Only
+                # epsilon-greedy steps decay it; warmup and forced pulls do not.
                 self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
         
         # Update state

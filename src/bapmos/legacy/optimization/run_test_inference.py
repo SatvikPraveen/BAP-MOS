@@ -34,6 +34,12 @@ def run_legacy_optimization_test_export(
     force_inference_output: bool = False,
     device: str = "cuda",
 ) -> None:
+    """Run a legacy optimization checkpoint on every test split and write the stratified test bundle.
+
+    Pooled prostate roots get one subfolder per test site plus ``sites.json``;
+    other roots write directly into ``output_dir``. Refuses non-primary-seed
+    runs unless ``force_inference_output`` is set.
+    """
     checkpoint = resolve_under_project(checkpoint)
     run_dir = checkpoint.parent
     inference = OptimizationInference(checkpoint, device=device)
@@ -98,6 +104,7 @@ def run_legacy_optimization_test_export(
 
 
 def main() -> None:
+    """CLI wrapper around :func:`run_legacy_optimization_test_export`."""
     p = argparse.ArgumentParser(
         description=(
             "Export legacy optimization test split under inference_output/ "

@@ -14,6 +14,7 @@ from bapmos.external_baselines.medsam_init.weight_loader import (
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Check MedSAM-vs-SAM ViT-B key overlap; return 0 if acceptable, 1 on failure."""
     p = argparse.ArgumentParser(
         description=(
             "Verify MedSAM checkpoint key overlap on SAM ViT-B before training. "

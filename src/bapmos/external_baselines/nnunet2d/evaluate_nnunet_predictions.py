@@ -204,6 +204,7 @@ gt_mask_path = _gt_mask_path
 
 
 def export_per_organ_metrics_csv(evaluator: MetricsEvaluator, organs: List[str], output_path: Path) -> None:
+    """Write one row of aggregated metrics per organ (organs with no data are skipped) to ``output_path``."""
     rows = []
     for organ in organs:
         agg = evaluator.aggregate_metrics(organ)
@@ -250,6 +251,10 @@ def evaluate_nnunet_test_predictions(
 
 
 def main() -> None:
+    """CLI: score nnU-Net prediction PNGs for one case-mapping split and write metric CSVs.
+
+    Optionally logs split and per-organ metrics to W&B (``--log-wandb``).
+    """
     p = argparse.ArgumentParser(description="Evaluate nnU-Net 2D predictions on held-out test split")
     p.add_argument("--predictions_dir", type=str, required=True, help="Folder of nnUNetv2_predict PNG outputs")
     p.add_argument(
