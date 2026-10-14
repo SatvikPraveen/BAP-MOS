@@ -36,6 +36,7 @@ def strip_run_timestamp(name: str) -> str:
 
 
 def inference_output_root(repo_root: Optional[Path] = None) -> Path:
+    """Absolute ``<repo_root>/inference_output`` (project root by default)."""
     root = resolve_under_project(repo_root) if repo_root else project_root()
     return (root / "inference_output").resolve()
 
@@ -333,6 +334,7 @@ def _dedupe_jobs_by_output(jobs: List[InferenceJob]) -> List[InferenceJob]:
 
 
 def iter_job_lines(jobs: Iterable[InferenceJob]) -> Iterator[str]:
+    """Yield one ``family|bundle|data_root|output_dir|label|checkpoint`` line per job (empty checkpoint if None)."""
     for job in jobs:
         ckpt = job.checkpoint.as_posix() if job.checkpoint else ""
         yield "|".join(

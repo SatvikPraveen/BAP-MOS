@@ -144,6 +144,7 @@ DEFAULT_HPO_SUITE = "bapmos_bo"
 
 
 def normalize_hpo_suite(suite: str) -> str:
+    """Canonical suite key (lower-case, hyphens→underscores); raise if not in ``HPO_SUITES``."""
     key = suite.lower().replace("-", "_")
     if key not in HPO_SUITES:
         choices = ", ".join(sorted(HPO_SUITES))
@@ -182,6 +183,7 @@ class HpoPaths:
         return self.spec["objective_label"]
 
     def optuna_studies_root(self) -> Path:
+        """Directory holding this suite's study DBs, startup catalogs and saturation flags."""
         root_rel = self.spec.get("studies_root")
         subdir = self.spec.get("studies_subdir", self.hpo_version)
         if root_rel:
@@ -205,6 +207,7 @@ class HpoPaths:
         return f"trial_{method}_{self.study_metric_tag}_{trial_number:04d}"
 
     def selected_params_path(self, dataset: str) -> Path:
+        """``<selected_root>/<selected_subdir>/<dataset>.yaml`` written by export for inner-loop training."""
         selected_root = self.spec.get("selected_root")
         selected_subdir = self.spec.get("selected_subdir", "selected")
         if selected_root:
@@ -225,6 +228,7 @@ class HpoPaths:
         )
 
     def selected_manifest_path(self) -> Path:
+        """``MANIFEST.json`` next to the selected-parameter YAMLs."""
         selected_root = self.spec.get("selected_root")
         selected_subdir = self.spec.get("selected_subdir", "selected")
         if selected_root:

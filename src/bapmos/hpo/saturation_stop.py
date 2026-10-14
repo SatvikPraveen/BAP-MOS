@@ -77,6 +77,7 @@ def saturation_flag_path(paths: HpoPaths, dataset: str) -> Path:
 
 
 def load_saturation_flag(path: Path) -> Optional[Dict[str, Any]]:
+    """Parsed ``<study>.saturated.json`` payload, or None if missing or unreadable."""
     if not path.is_file():
         return None
     try:
@@ -95,6 +96,7 @@ def saturation_report_for_study(
     eps_rel: Optional[float] = None,
     n_startup: Optional[int] = None,
 ) -> SaturationReport:
+    """Run :func:`analyze_saturation` on ``study`` with suite defaults for any unset K / ε / n_startup."""
     paths = HpoPaths.for_suite(hpo_suite)
     defaults = convergence_defaults_for_suite(hpo_suite)
     return analyze_saturation(
@@ -127,6 +129,7 @@ def write_saturation_flag(
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         **asdict(report),
     }
+    # Exclusive create: concurrent workers race safely and only one writes the flag.
     try:
         with open(path, "x", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2)
@@ -180,6 +183,8 @@ def worker_should_skip(
     """Return (skip, reason) before a worker claims another trial."""
     from bapmos.hpo.trial_utils import successful_trials
 
+    # Order: hard budget, then an existing flag, then a fresh saturation check
+    # (only after the startup catalog is complete).
     paths = HpoPaths.for_suite(hpo_suite)
     budget = _trial_budget(hpo_suite)
     if len(successful_trials(study)) >= budget:
@@ -329,6 +334,7 @@ def wait_until_finalize_ready(
 
 
 def clear_saturation_flag(paths: HpoPaths, dataset: str) -> None:
+    """Delete the study's saturation flag file if present."""
     flag = saturation_flag_path(paths, dataset)
     if flag.is_file():
         flag.unlink()

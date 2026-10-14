@@ -114,6 +114,7 @@ def known_methods(corpus: Corpus) -> tuple[str, ...]:
 
 
 def list_method_dirs(corpus: Corpus, *, dataset: Optional[str] = None, repo: Optional[Path] = None) -> list[Path]:
+    """Sorted method folders under ``results/<corpus>/<dataset>/by_seed/`` (empty if none)."""
     root = corpus_results_root(corpus, dataset, repo=repo) / "by_seed"
     if not root.is_dir():
         return []

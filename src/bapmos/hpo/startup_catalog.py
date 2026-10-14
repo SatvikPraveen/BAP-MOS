@@ -78,6 +78,8 @@ def _decode_lhs_row(unit_row: Sequence[float]) -> Dict[str, Any]:
 def _latin_hypercube_unit(n: int, d: int, rng: random.Random) -> List[List[float]]:
     if n < 1:
         return []
+    # Per dimension, a random permutation assigns each sample its own 1/n stratum,
+    # with a uniform offset inside the stratum.
     samples = [[0.0] * d for _ in range(n)]
     for j in range(d):
         perm = list(range(n))
@@ -107,6 +109,8 @@ def generate_startup_catalog(
     seen = {search_params_key(baseline)}
     rng = random.Random(seed)
 
+    # Snapping to integer steps can collide LHS points with each other or the
+    # baseline; redraw a fresh LHS for the shortfall until n unique vectors exist.
     lhs_n = max(0, n - 1)
     attempts = 0
     max_attempts = lhs_n * 50 + 100
@@ -132,6 +136,7 @@ def generate_startup_catalog(
 
 
 def write_startup_catalog(catalog: Sequence[Dict[str, Any]], path: Path) -> Path:
+    """Write the catalog as a 5-column CSV (one row per startup config, in enqueue order)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [key for key, *_ in _DIM_SPECS]
@@ -144,6 +149,7 @@ def write_startup_catalog(catalog: Sequence[Dict[str, Any]], path: Path) -> Path
 
 
 def read_startup_catalog(path: Path) -> List[Dict[str, Any]]:
+    """Read a catalog CSV written by :func:`write_startup_catalog` (types re-normalized)."""
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -173,6 +179,12 @@ def load_or_create_startup_catalog(
     n_startup: int | None = None,
     seed: int = STARTUP_CATALOG_SEED,
 ) -> tuple[List[Dict[str, Any]], Path]:
+    """Return the study's startup catalog and its CSV path.
+
+    The CSV next to the study DB is authoritative once written, so re-initialising a
+    study re-enqueues exactly the same configs; it is generated (and written) only
+    when absent.
+    """
     cat_path = startup_catalog_path(paths, dataset)
     if cat_path.is_file():
         return read_startup_catalog(cat_path), cat_path

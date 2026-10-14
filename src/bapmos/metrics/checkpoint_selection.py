@@ -58,6 +58,8 @@ def ptv_kfold_msd_mm(
     if n_slices == 0:
         return None
 
+    # Seeded shuffle of sorted slice ids, then round-robin assignment: fold sizes
+    # differ by at most one and the split is identical across epochs and trials.
     k = min(max(int(n_folds), 1), n_slices)
     rng = np.random.default_rng(int(seed))
     perm = list(rng.permutation(slice_ids))
@@ -67,6 +69,7 @@ def ptv_kfold_msd_mm(
         folds[idx % k].append(str(sid))
 
     id_to_msd = {str(m["image_id"]): float(m["msd_mm"]) for m in metrics_list}
+    # Mean of fold means (equal weight per fold, not per slice).
     fold_means: list[float] = []
     for fold_ids in folds:
         msds = [id_to_msd[sid] for sid in fold_ids if sid in id_to_msd]
@@ -99,6 +102,8 @@ def ptv_full_val_metrics(
 
 @dataclass(frozen=True)
 class CheckpointObjectiveConfig:
+    """Validation objective used for best-checkpoint selection (see :func:`parse_checkpoint_objective_config`)."""
+
     metric: str = "organ_balanced_msd"
     kfold_n: int = 5
     kfold_seed: int = 42
@@ -108,6 +113,8 @@ class CheckpointObjectiveConfig:
 
 @dataclass(frozen=True)
 class CheckpointScores:
+    """Primary objective MSD plus PTV and organ-balanced secondary metrics for one validation pass."""
+
     primary_msd: Optional[float]
     metric: str
     ptv_organ: Optional[str] = None
@@ -173,6 +180,7 @@ def checkpoint_scores_from_evaluator(
     objective: CheckpointObjectiveConfig,
     evaluator_organ_labels: Sequence[str],
 ) -> CheckpointScores:
+    """Score a validation evaluator under ``objective`` (``primary_msd`` is None if no PTV organ)."""
     organ_bal = organ_balanced_validation_summary(evaluator)
     ptv_organ = resolve_ptv_evaluator_organ(
         evaluator_organ_labels, override=objective.objective_organ
@@ -222,6 +230,7 @@ def merge_checkpoint_objective_config(target: dict, source: dict) -> None:
 
 
 def add_checkpoint_objective_cli(parser) -> None:
+    """Register ``--checkpoint-objective-*`` / ``--checkpoint-kfold-*`` options on ``parser``."""
     parser.add_argument(
         "--checkpoint-objective-metric",
         type=str,
@@ -240,6 +249,7 @@ def add_checkpoint_objective_cli(parser) -> None:
 
 
 def apply_checkpoint_objective_cli(config: dict, args) -> None:
+    """Write any CLI checkpoint-objective flags into ``config["checkpoint_objective"]`` (in place)."""
     metric = getattr(args, "checkpoint_objective_metric", None)
     if metric:
         config.setdefault("checkpoint_objective", {})
@@ -264,6 +274,7 @@ def is_better_checkpoint(
     *,
     min_delta: float,
 ) -> bool:
+    """True when ``candidate_msd`` improves on ``best_msd`` by more than ``min_delta`` (lower is better)."""
     if candidate_msd is None:
         return False
     return float(candidate_msd) < float(best_msd) - float(min_delta)

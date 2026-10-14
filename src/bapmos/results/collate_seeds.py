@@ -92,6 +92,7 @@ def _pick(row: Dict[str, str], aliases: Sequence[str]) -> Optional[float]:
 
 
 def read_summary_metrics(path: Path) -> List[Dict[str, str]]:
+    """Rows of an evaluator ``summary_metrics.csv`` as string dicts."""
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -133,6 +134,7 @@ def normalize_summary_rows(
 
 
 def write_normalized_csv(path: Path, rows: Sequence[Dict[str, Any]]) -> Path:
+    """Write rows with the ``NORMALIZED_FIELDS`` columns (None → empty cell)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as f:
@@ -197,6 +199,7 @@ def _mean_numeric(values: Sequence[Any]) -> Optional[float]:
 
 
 def read_per_slice_metrics(path: Path) -> List[Dict[str, str]]:
+    """Rows of an evaluator ``per_slice_metrics.csv`` as string dicts."""
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -290,6 +293,7 @@ def pool_organs_from_per_slice(
                 "source": source_note,
             }
         )
+    # ``organ=all`` averages every kept (slice, organ) row across all sites.
     if all_rows:
         out.append(
             {
@@ -682,6 +686,7 @@ def build_corpus(
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
+    """CLI: ``ingest`` / ``ingest-run`` per-seed metrics into ``by_seed/``, then ``build`` mean±std tables."""
     p = argparse.ArgumentParser(
         description="Collate per-seed test metrics into mean±std paper tables."
     )

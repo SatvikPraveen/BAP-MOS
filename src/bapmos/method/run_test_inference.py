@@ -40,6 +40,13 @@ def run_bapmos_test_export(
     viz_pdf_max: int | None = None,
     force_inference_output: bool = False,
 ) -> None:
+    """Export stratified test predictions, metrics and panels for one trained checkpoint.
+
+    Rebuilds the trainer from the run's saved config, loads the checkpoint's decoder and
+    bandit state, prompts each organ with its highest-Q arm, and writes the export bundle
+    under ``output_dir`` (one subfolder per site for pooled prostate). Refuses
+    non-primary-seed runs unless ``force_inference_output`` is set.
+    """
     checkpoint = resolve_under_project(checkpoint)
     run_dir = checkpoint.parent
     cfg = load_run_config(run_dir, checkpoint)
@@ -98,6 +105,7 @@ def run_bapmos_test_export(
 
     @torch.no_grad()
     def predict_fn(image_rgb, mask_multi, fn: str):
+        """Return the 256x256 label map for one slice using each organ's highest-Q prompt."""
         trainer.model.eval()
         emb_path = None
         if emb_dir is not None:
@@ -154,6 +162,7 @@ def run_bapmos_test_export(
 
 
 def main() -> None:
+    """CLI wrapper around :func:`run_bapmos_test_export`."""
     p = argparse.ArgumentParser(
         description=(
             "Export bapmos.method test split under inference_output/ "

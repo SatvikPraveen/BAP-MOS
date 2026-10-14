@@ -16,12 +16,15 @@ from bapmos.hpo.trial_utils import search_params_key, trial_flat_params
 
 DEFAULT_CONFIRMATION_TRIALS = 15
 DEFAULT_EPS_REL = 0.005
-# Physical plateau tolerance; converted to objective units via suite pixel_spacing.
+# Absolute plateau tolerance in mm. The objective is already in mm, so this is used
+# as ``eps_abs`` unchanged unless the suite spec sets ``eps_abs`` explicitly.
 DEFAULT_EPS_ABS_PHYSICAL_MM = 0.001
 
 
 @dataclass(frozen=True)
 class ConvergenceDefaults:
+    """Per-suite saturation protocol: startup size, K, ε thresholds and trial budget."""
+
     n_startup: int
     confirmation_trials: int
     eps_abs: float
@@ -34,6 +37,8 @@ class ConvergenceDefaults:
 
 @dataclass(frozen=True)
 class SaturationReport:
+    """Saturation status and GPU-hour accounting for one study (see :func:`analyze_saturation`)."""
+
     dataset: str
     hpo_suite: str
     objective_label: str
@@ -59,6 +64,7 @@ class SaturationReport:
 
 
 def convergence_defaults_for_suite(hpo_suite: str) -> ConvergenceDefaults:
+    """Saturation defaults from the suite spec (K=15, ε_rel=0.005, ε_abs=0.001 mm, 20 startup, 100 trials)."""
     paths = HpoPaths.for_suite(hpo_suite)
     spec = paths.spec
     pixel_spacing_mm = float(spec.get("pixel_spacing_mm", 0.159072))
@@ -252,6 +258,15 @@ def analyze_saturation(
     eps_rel: float,
     startup_param_keys: set[tuple] | None = None,
 ) -> SaturationReport:
+    """Apply the (K, ε) saturation rule to completed trials, in trial-number order.
+
+    A trial improves when ``value < best - max(eps_abs, eps_rel * best)``. ``t_last``
+    is the last improving trial and ``q`` the number of completed trials after it;
+    the study is saturated when ``q >= confirmation_trials`` (K). With
+    ``startup_param_keys`` (TPE catalog) nothing saturates until every catalog config
+    has completed, and ``t_last`` / ``q`` count only post-startup (TPE-sampled) trials.
+    ``n_eff`` is the K-th trial after ``t_last`` (or ``t_last + K`` if not yet run).
+    """
     completed = sorted(
         [t for t in trials if t.state.name == "COMPLETE" and t.value is not None],
         key=lambda t: t.number,
@@ -377,6 +392,7 @@ def analyze_saturation(
 
 
 def default_report_output_dir(hpo_suite: str) -> Path:
+    """Default figure directory: ``experiments/<organ>/bapmos/figures/outer_loop/<sam|medsam|method>/``."""
     paths = HpoPaths.for_suite(hpo_suite)
     if paths.suite in ("bapmos_bo_sam", "bapmos_bo_medsam"):
         backbone = "medsam" if "medsam" in paths.suite else "sam"
@@ -404,6 +420,7 @@ def default_report_output_dir(hpo_suite: str) -> Path:
 
 
 def write_saturation_csv(reports: Sequence[SaturationReport], path: Path) -> Path:
+    """Write one CSV row per report (columns = :class:`SaturationReport` fields)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(asdict(reports[0]).keys()) if reports else []
     with path.open("w", newline="", encoding="utf-8") as f:
@@ -518,6 +535,7 @@ def write_saturation_json(
     *,
     hpo_suite: str,
 ) -> Path:
+    """Write reports keyed by dataset plus the suite's saturation protocol to JSON."""
     defaults = convergence_defaults_for_suite(hpo_suite)
     payload = {
         "exported_at": datetime.now(timezone.utc).isoformat(),
@@ -571,6 +589,10 @@ def render_compute_convergence_figure(
     n_startup: int = 0,
     startup_param_keys: set[tuple] | None = None,
 ) -> Path:
+    """Plot best-so-far (ε-improvements only) vs cumulative GPU-hours, with the N_eff cutoff.
+
+    Saves PNG and PDF next to ``output_path``; returns the PNG path.
+    """
     import matplotlib.pyplot as plt
 
     completed = sorted(
@@ -644,6 +666,12 @@ def run_convergence_report(
     n_startup: Optional[int] = None,
     max_concurrent_gpus: Optional[int] = None,
 ) -> Dict[str, Path]:
+    """Saturation report for one dataset study.
+
+    Writes ``<dataset>_convergence.{csv,json}``, ``<dataset>_trial_costs.csv``,
+    ``<dataset>_convergence_by_gpu_h.{png,pdf}`` and ``<dataset>_time_cost_summary.md``
+    under ``output_dir`` (default :func:`default_report_output_dir`); returns their paths.
+    """
     from bapmos.hpo.study_runner import create_study
 
     paths = HpoPaths.for_suite(hpo_suite)
@@ -717,6 +745,7 @@ def run_convergence_report_all(
     output_dir: Optional[Path] = None,
     **kwargs,
 ) -> Tuple[List[SaturationReport], Dict[str, Path]]:
+    """Per-dataset trial costs, figures and summaries plus ``convergence_summary.{csv,json}`` across datasets."""
     from bapmos.hpo.study_runner import create_study
 
     paths = HpoPaths.for_suite(hpo_suite)

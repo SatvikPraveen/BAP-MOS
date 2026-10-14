@@ -1,10 +1,12 @@
 """
-BAP-MOS training loop integrating prompt geometry, bandit policy, and curriculum reward.
+BAP-MOS training loop integrating prompt geometry, bandit policy, and bandit reward.
 
 Training flow per decision block (K batches):
   1. ``BlockScheduler.begin_block`` — select frozen arms per organ (no t/N_a increment).
-  2. Train K batches with ``prompt_geometry`` + single-forward SAM per organ.
-  3. Validation MSD per organ (val probe) → reward → ``BlockScheduler.end_block``.
+  2. Train K batches with ``prompt_geometry`` + single-forward SAM per organ
+     (image embedding computed once per image; only the mask decoder is updated).
+  3. Per-organ val-probe metrics (Dice, MSD, HD95) → reward (composite by default;
+     MSD-only for ``fixed_clip`` / ``curriculum``) → ``BlockScheduler.end_block``.
 
 After each epoch: val metrics (MSD, Dice, HD95) for monitoring; optional full
 train metrics when ``evaluation.eval_train_metrics`` is true.
@@ -90,6 +92,7 @@ except ImportError:
 
 
 def setup_logging(log_dir: Path) -> None:
+    """Route INFO logging to ``<log_dir>/train.log`` and stderr (replaces existing handlers)."""
     log_dir.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
@@ -345,6 +348,7 @@ class BAPMOSTrainer:
         *,
         data_root: Optional[str] = None,
     ) -> None:
+        """Set organ→class mapping and, given ``data_root``, evaluator labels, spacing and objective organ."""
         self.organ_to_class = organ_to_class
         self.num_classes = num_classes
         if data_root is not None:
@@ -426,7 +430,7 @@ class BAPMOSTrainer:
         gt_multi: torch.Tensor,
         dist_maps: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """Decoder loss: CE+Dice (default) or scheduled Kervadec CE+Dice + boundary."""
+        """Decoder loss: scheduled Kervadec-style CE+Dice + boundary term (enforced for BAP-MOS)."""
         return self.decoder_loss(
             logits,
             gt_multi,
@@ -573,6 +577,8 @@ class BAPMOSTrainer:
         if not prompts:
             return None
 
+        # One frozen-encoder pass (or cached pack) per image; every organ prompt below
+        # reuses this embedding and only runs prompt encoder + mask decoder.
         img_emb, original_size = self._prepare_image_embedding(
             image_rgb,
             sample_id,
@@ -725,6 +731,7 @@ class BAPMOSTrainer:
                 }
                 merge_prompt_counts(train_prompt_counts, realized)
                 logits, gt = out
+                # One optimizer step per slice (all present organs decoded jointly).
                 loss = self.loss_fn(
                     logits, gt, dist_maps=self._prepare_boundary_dist_maps(gt)
                 )
@@ -781,6 +788,7 @@ class BAPMOSTrainer:
         return total_loss / max(n, 1), train_prompt_counts
 
     def save_checkpoint(self, path: Path, val_msd: float, *, tag: str = "") -> None:
+        """Atomically write a format-v2 checkpoint (decoder, optimizer, bandit, scheduler, RNGs, config)."""
         path.parent.mkdir(parents=True, exist_ok=True)
         ckpt = {
             "format_version": 2,
@@ -873,6 +881,13 @@ class BAPMOSTrainer:
         skip_test: bool = False,
         start_epoch: int = 0,
     ) -> None:
+        """Run epochs from ``start_epoch`` with early stopping on the validation objective.
+
+        Each epoch appends a row to ``<run_dir>/metrics.csv`` and rewrites
+        ``last_checkpoint.pth``; ``best_checkpoint.pth`` is replaced when the objective
+        improves by more than ``val_msd_min_delta``. When enabled, the test split is then
+        evaluated with ``best_checkpoint.pth`` (metrics/JSON only).
+        """
         self.run_dir = run_dir
         metrics_path = run_dir / "metrics.csv"
         if not metrics_path.is_file():
@@ -1265,6 +1280,7 @@ def run_training_job(
 
 
 def main(argv: Optional[List[str]] = None) -> None:
+    """CLI: compose a config (version × dataset × experiment) and train one or all experiments."""
     from bapmos.method.bapmos_seeds import apply_training_seed_env
     from bapmos.method.config_utils import (
         compose_config,

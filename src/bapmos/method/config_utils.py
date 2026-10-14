@@ -136,6 +136,7 @@ ALLOW_PLACEHOLDER_SELECTED_ENV = "BAPMOS_ALLOW_PLACEHOLDER_SELECTED"
 
 
 def normalize_version_key(version: str) -> str:
+    """Lower-case, hyphens→underscores; non-``bapmos*`` keys get a ``v`` prefix."""
     key = version.lower().replace("-", "_")
     if key.startswith("bapmos"):
         return key
@@ -157,6 +158,7 @@ def suite_dir_for_version(version: str) -> Optional[str]:
 
 
 def is_suite_version(version: str) -> bool:
+    """True if ``version`` maps to a suite directory (False for unknown or removed keys)."""
     try:
         return suite_dir_for_version(version) is not None
     except ValueError:
@@ -183,6 +185,7 @@ def _load_yaml_path(path: Path) -> dict:
 
 
 def dataset_filename(dataset: str) -> str:
+    """Canonical dataset fragment name for a CLI dataset alias (e.g. ``case_1`` → ``case1``)."""
     key = dataset.lower().replace("-", "").replace("_", "")
     aliases = {
         "simulation": "simulation",
@@ -539,6 +542,7 @@ def compose_config(version: str, dataset: str) -> Dict[str, Any]:
 
 
 def list_experiments(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Experiment entries from ``cfg["experiments"]``; a single ``default_seed42`` entry if none."""
     exps = cfg.get("experiments", [])
     if not exps:
         return [{"name": "default_seed42", "seed": 42}]
