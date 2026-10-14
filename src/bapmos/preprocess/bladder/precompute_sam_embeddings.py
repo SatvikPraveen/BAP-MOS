@@ -93,6 +93,12 @@ def _load_existing_meta(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Encode every frame in the selected split lists with a frozen SAM image encoder.
+
+    Writes one ``{Pxxx_frame_yyy}.pt`` per frame (``image_embedding``, ``original_size``,
+    ``input_size``, checkpoint basename) plus ``manifest.csv`` and ``manifest.json``
+    under ``--output_dir``. Existing ``.pt`` files are kept unless ``--overwrite``.
+    """
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     p = argparse.ArgumentParser(
         description="Precompute frozen SAM ViT image embeddings for PFUS1 split lines.",
@@ -210,7 +216,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if device.type == "cpu":
         # Some CPU stacks hit conv "could not create a primitive" with MKLDNN; this matches
-        # a known-good smoke on shared login nodes (still slow for large PFUS1 — prefer GPU/Slurm).
+        # a known-good CPU smoke run (still slow for large PFUS1; prefer a GPU).
         torch.backends.mkldnn.enabled = False
         torch.set_num_threads(1)
         logger.info("CPU precompute: MKLDNN off, torch intra-op threads=1 for SAM image_encoder.")
@@ -288,6 +294,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             continue
 
+        # Same path as Sam.forward: resize longest side to img_size (1024), then
+        # sam.preprocess normalises and zero-pads to a square input.
         input_image = transform.apply_image(image_rgb)
         input_size = (int(input_image.shape[0]), int(input_image.shape[1]))
         x = torch.as_tensor(input_image, device=device).float()

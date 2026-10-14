@@ -61,6 +61,8 @@ DATASET_IDS = ("simulation", "case_1", "case_2")
 
 @dataclass
 class SplitReport:
+    """Per-split overlay counts; ``class_presence_count_by_slice`` counts slices containing each class ID."""
+
     requested: int = 0
     written: int = 0
     missing_image: List[str] = field(default_factory=list)
@@ -70,6 +72,8 @@ class SplitReport:
 
 @dataclass
 class DatasetReport:
+    """Overlay results for one dataset; ``passed`` is False on any missing image, mask or taxonomy."""
+
     dataset_id: str
     dataset_root: str
     splits_subdir: str
@@ -267,6 +271,7 @@ def combined_mask_path(mask_dir: Path, stem: str) -> Path:
 
 
 def load_split_list(splits_dir: Path, split: str) -> List[str]:
+    """Non-empty lines of ``{split}.txt`` (slice filenames), or ``[]`` if the file is missing."""
     p = splits_dir / f"{split}.txt"
     if not p.is_file():
         return []
@@ -287,6 +292,13 @@ def process_dataset(
     *,
     out_root: Path,
 ) -> DatasetReport:
+    """Render QA overlays for the train/val/test slices of one dataset.
+
+    Writes ``<out_root>/<dataset_id>/<split>/<slice>.png`` and, with
+    ``also_render_excluded``, background-only slices from ``split_summary.json``
+    under ``excluded_background_only/``. ``max_per_split`` draws a seeded random
+    subset. Source images and masks are never modified.
+    """
     rng = random.Random(seed)
     splits_dir = dataset_root / splits_subdir
     out_base = out_root / dataset_id
@@ -361,6 +373,7 @@ def process_dataset(
                 rep.passed = False
                 continue
             rgb = cv2.cvtColor(bgr, cv2.COLOR_GRAY2RGB)
+            # Masks store raw class IDs (0 = background), not display grey levels.
             mask = np.asarray(Image.open(mp).convert("L"))
             for v in np.unique(mask):
                 if v > 0:
@@ -432,6 +445,7 @@ def write_summaries(
     *,
     out_root: Path,
 ) -> None:
+    """Write ``overlay_summary.json`` and ``overlay_summary.txt`` under ``out_root``."""
     out_root.mkdir(parents=True, exist_ok=True)
     payload: Dict[str, Any] = {
         "generated_at": datetime.now().isoformat(),
@@ -507,6 +521,7 @@ def write_summaries(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Render overlays for ``--dataset`` or ``--all``; returns 0 if every dataset passed, 1 otherwise (2 on bad args)."""
     p = argparse.ArgumentParser(
         prog="python -m bapmos.preprocess.delineation.mask_overlays",
         description=__doc__,

@@ -45,6 +45,7 @@ MID_BIN_MAX_FRAMES = 170
 
 
 def frame_count_bin(n_frames: int) -> BinName:
+    """Frame-count bin of a patient: ``low`` (<= 110), ``mid`` (111-170) or ``high`` (> 170)."""
     if n_frames <= LOW_BIN_MAX_FRAMES:
         return "low"
     if n_frames <= MID_BIN_MAX_FRAMES:
@@ -57,6 +58,7 @@ def list_patients(raw_root: Path) -> List[str]:
 
 
 def list_samples_for_patient(patient_dir: Path) -> List[str]:
+    """Sorted ``Pxxx/frame_yyy`` keys for frames that have both a PNG and a JSON file."""
     keys: List[str] = []
     for png in sorted(patient_dir.glob("frame_*.png")):
         stem = png.stem
@@ -174,6 +176,13 @@ def write_patient_splits(
     seed: int,
     min_polygon_area: float,
 ) -> Dict[str, Any]:
+    """Build the patient-level 70/15/15 split and write it to ``out_root``.
+
+    Writes ``{train,val,test}.txt`` (frame keys), ``{train,val,test}_patients.txt``,
+    ``split_summary.json`` and ``split_summary.txt``, prints the text summary and
+    returns the summary dict. Raises if a patient has no valid frames or the
+    per-bin allocation does not add up to the global largest-remainder counts.
+    """
     patients = list_patients(raw_root)
     n_pat = len(patients)
     n_train, n_val, n_test = _split_patient_counts(n_pat)
@@ -200,6 +209,7 @@ def write_patient_splits(
         )
 
     def expand(patient_list: List[str]) -> List[str]:
+        """Frame keys of ``patient_list``, grouped by patient in sorted patient order."""
         keys: List[str] = []
         for p in sorted(patient_list):
             keys.extend(patient_to_samples[p])
@@ -224,12 +234,14 @@ def write_patient_splits(
     (out_root / "test.txt").write_text("\n".join(test_keys) + "\n", encoding="utf-8")
 
     def bin_mix(patient_list: List[str]) -> Dict[str, int]:
+        """Number of patients per frame-count bin."""
         mix = {"low": 0, "mid": 0, "high": 0}
         for p in patient_list:
             mix[frame_count_bin(patient_n_frames[p])] += 1
         return mix
 
     def frame_stats(patient_list: List[str]) -> Dict[str, float]:
+        """Min / max / mean / sum of frames per patient (all 0.0 if empty)."""
         counts = [patient_n_frames[p] for p in patient_list]
         if not counts:
             return {"min": 0.0, "max": 0.0, "mean": 0.0, "sum": 0.0}
@@ -342,6 +354,7 @@ def write_patient_splits(
 
 
 def main(argv: List[str] | None = None) -> int:
+    """CLI wrapper around :func:`write_patient_splits`; returns 1 if ``--raw_root`` is missing."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--raw_root",

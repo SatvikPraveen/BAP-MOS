@@ -23,6 +23,11 @@ def spacing_contract_path() -> Path:
 
 
 def build_spacing_contract_dict() -> Dict[str, Any]:
+    """Spacing contract written to ``spacing_contract.json`` by the pooled build.
+
+    Records the pool spacing, per-cohort native/effective spacing and the
+    simulation resample scale (simulation mm/px divided by clinical mm/px).
+    """
     clin = list(PIXEL_SPACING_CLINICAL_MM)
     sim = list(PIXEL_SPACING_SIMULATION_MM)
     scale = sim[0] / clin[0]
@@ -62,6 +67,7 @@ def build_spacing_contract_dict() -> Dict[str, Any]:
 
 
 def load_spacing_contract() -> Dict[str, Any]:
+    """Read the pooled bundle's ``spacing_contract.json``; raises ``FileNotFoundError`` if missing."""
     path = spacing_contract_path()
     if not path.is_file():
         raise FileNotFoundError(

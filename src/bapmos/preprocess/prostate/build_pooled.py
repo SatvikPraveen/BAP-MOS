@@ -39,12 +39,16 @@ from bapmos.training_taxonomy import (
 
 SPACING_SIM_MM = PIXEL_SPACING_SIMULATION_MM[0]
 SPACING_CLIN_MM = PIXEL_SPACING_CLINICAL_MM[0]
+# Simulation pixels are finer than clinical ones, so this is < 1: resizing by it keeps
+# physical size while moving simulation slices onto the clinical mm/px grid.
 RESAMPLE_SCALE = SPACING_SIM_MM / SPACING_CLIN_MM
 
 from bapmos.preprocess.prostate.spacing import (
     SPACING_CONTRACT_FILE,
     build_spacing_contract_dict,
 )
+# Lookup indexed by simulation class ID: bg 0->0, rectum 1->3, bladder 2->1, ptv1 3->ptv 2
+# (see ``bapmos.data.organ_registry``).
 SIM_CLASS_TO_CLINICAL = np.array([0, 3, 1, 2], dtype=np.uint8)
 
 COHORTS: Tuple[Tuple[str, Path, bool], ...] = (
@@ -214,6 +218,16 @@ def build_pooled(
     force: bool = False,
     out_root: Path | None = None,
 ) -> Path:
+    """Build the pooled prostate corpus and return its root.
+
+    Simulation slices are resampled to clinical spacing (linear for images, nearest for
+    masks) and remapped to clinical class IDs; clinical slices are symlinked (or copied
+    when ``use_symlinks`` is False). Writes ``images/``, ``masks/combined_masks/``,
+    ``splits_stratified/{train,val}.txt`` (concatenated across cohorts) and
+    ``split_summary.json``, ``site_tests/<cohort>/test.txt``, ``spacing_contract.json``
+    and ``manifest.json``. ``force`` deletes ``out_root`` first; otherwise existing
+    files are kept.
+    """
     out_root = Path(out_root) if out_root is not None else pooled_prostate_dataset_dir()
     if force and out_root.exists():
         shutil.rmtree(out_root)
@@ -325,6 +339,7 @@ def build_pooled(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI for :func:`build_pooled` (``python -m bapmos.preprocess.prostate``)."""
     p = argparse.ArgumentParser(
         prog="python -m bapmos.preprocess.prostate",
         description="Build pooled prostate dataset under data/prostate/pooled/",

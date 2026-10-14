@@ -88,6 +88,12 @@ def run_one(
     slice_organ_presence_json: Optional[Path],
     use_slice_organ_presence_json: bool,
 ) -> None:
+    """Convert one case's MR DICOM to PNG (unless ``skip_dicom_png``), then export RTSTRUCT masks.
+
+    Masks go to ``<dataset_root>/masks``; ``structures`` is a comma-separated ROIName
+    filter. With ``dry_run`` the PNG step only prints its plan and ``run_export`` is
+    called with ``dry_run=True``.
+    """
     _key, dataset_root, dicom_dir, png_dir, taxonomy = _resolve_case(case)
     if not skip_dicom_png:
         if dry_run:
@@ -120,6 +126,7 @@ def run_one(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Run :func:`run_one` for ``--case`` (or case1, case2 and simulation for ``all``)."""
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--case", required=True, help="case1 | case2 | simulation | all")
     p.add_argument("--skip-dicom-png", action="store_true", help="Only run RTSTRUCT mask export")

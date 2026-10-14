@@ -120,6 +120,7 @@ def rtstruct_roi_to_class_id(roi_name: str, taxonomy: str) -> Optional[int]:
             return 3
         return None
 
+    # Order matters: substring checks run top to bottom and the first match wins.
     if taxonomy == "clinical":
         if "urethra" in n:
             return 4
@@ -532,6 +533,8 @@ def contour_to_mask(
     """Project RTSTRUCT contour (mm) to slice binary mask (uint8 0 / 255)."""
     contour_pixels: List[List[int]] = []
     for point in contour_data:
+        # Assumes axial slices with identity row/column direction cosines: patient x maps
+        # to column and y to row. DICOM PixelSpacing is [row spacing, column spacing].
         col = (point[0] - image_position[0]) / pixel_spacing[1]
         row = (point[1] - image_position[1]) / pixel_spacing[0]
         contour_pixels.append([int(round(col)), int(round(row))])
@@ -605,6 +608,8 @@ def extract_per_organ_masks(
                 int(info["rows"]),
                 int(info["columns"]),
             )
+            # One file per (ROI, slice): a second contour of this ROI on the same slice
+            # overwrites the first rather than being merged.
             out_path = structure_dir / f"{info['file_name']}_mask.png"
             cv2.imwrite(str(out_path), mask)
             n_written += 1
@@ -690,6 +695,7 @@ def build_combined_masks(
                 m = cv2.imread(str(bin_path), cv2.IMREAD_GRAYSCALE)
                 if m is None:
                     continue
+                # Later classes in paint_order overwrite earlier ones where ROIs overlap.
                 combined[m > 0] = cid
         out = combined_dir / f"{stem}_combined_mask.png"
         cv2.imwrite(str(out), combined)
@@ -731,6 +737,15 @@ def run_export(
     slice_organ_presence_json: Optional[Path] = None,
     use_slice_organ_presence_json: bool = True,
 ) -> None:
+    """Export one RTSTRUCT to per-ROI and combined slice masks under ``masks_root``.
+
+    Uses ``rtstruct_path`` or the first ``RS*.dcm`` in ``dicom_dir``. MR slices are
+    filtered to the training slice set (see :func:`filter_image_map_to_training_slices`),
+    stale masks for other stems are deleted, then per-ROI binaries,
+    ``rtstruct_roi_class_map.json`` and ``combined_masks/`` (with previews and
+    ``label_mapping.json``) are written. ``dry_run`` stops after slice mapping.
+    The dataset root is taken to be ``masks_root.parent``.
+    """
     _ensure_rtstruct_export_logging()
     dicom_dir = dicom_dir.expanduser().resolve()
     masks_root = masks_root.expanduser().resolve()
@@ -773,6 +788,7 @@ def run_export(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """CLI wrapper around :func:`run_export` (never removes a legacy ``splits/`` dir)."""
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--dicom-dir", type=Path, required=True, help="Folder with MR*.dcm and RS*.dcm")
     p.add_argument(

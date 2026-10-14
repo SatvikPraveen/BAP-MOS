@@ -33,6 +33,7 @@ def _root() -> Path:
 
 
 def polygon_area_xy(poly: List[List[float]]) -> float:
+    """Area in px^2 of a simple polygon given as ``[[x, y], ...]`` (shoelace formula; 0 if < 3 vertices)."""
     pts = np.asarray(poly, dtype=np.float64)
     if pts.shape[0] < 3:
         return 0.0
@@ -42,6 +43,11 @@ def polygon_area_xy(poly: List[List[float]]) -> float:
 
 
 def analyze_json_frame(json_path: Path, min_area: float) -> Dict[str, Any]:
+    """Per-label presence and summed polygon area for one PFUS1 annotation JSON.
+
+    A label counts as present when any single polygon has area ``>= min_area``.
+    Returns ``{"error": ...}`` if the file is not a JSON list.
+    """
     with open(json_path, encoding="utf-8") as f:
         ann = json.load(f)
     present: Dict[str, bool] = {}
@@ -66,6 +72,10 @@ def analyze_json_frame(json_path: Path, min_area: float) -> Dict[str, Any]:
 
 
 def walk_json_stats(raw_root: Path, min_area: float) -> Dict[str, Any]:
+    """Aggregate label frame frequency over every ``P*/frame_*.json`` under ``raw_root``.
+
+    Area sums only include frames where the label is present (``>= min_area``).
+    """
     patients = sorted(p for p in raw_root.iterdir() if p.is_dir() and p.name.startswith("P"))
     n_frames = 0
     label_frame_hits: DefaultDict[str, int] = defaultdict(int)
@@ -110,6 +120,10 @@ def walk_json_stats(raw_root: Path, min_area: float) -> Dict[str, Any]:
 
 
 def mask_class_pixel_counts(mask_dir: Path) -> Optional[Dict[str, Any]]:
+    """Total foreground pixels per class (1..8) over all ``*_combined_mask.png`` files.
+
+    Returns ``None`` if ``mask_dir`` does not exist.
+    """
     if not mask_dir.is_dir():
         return None
     totals: DefaultDict[int, int] = defaultdict(int)
@@ -134,6 +148,7 @@ def mask_class_pixel_counts(mask_dir: Path) -> Optional[Dict[str, Any]]:
 
 
 def dice_coefficient(pred: np.ndarray, gt: np.ndarray, class_id: int) -> float:
+    """Dice for one class in label maps; 1.0 when the class is absent from both."""
     p = pred == class_id
     g = gt == class_id
     inter = np.logical_and(p, g).sum()
@@ -166,6 +181,8 @@ def symmetric_surface_distances_px(pred: np.ndarray, gt: np.ndarray, class_id: i
     if not p_b.any() or not g_b.any():
         return np.array([np.nan], dtype=np.float64)
 
+    # EDT of the complement = distance from each pixel to the nearest foreground
+    # pixel of the other mask; sampled on each boundary gives both directions.
     dt_g = distance_transform_edt(~g)
     dt_p = distance_transform_edt(~p)
     d_pg = dt_g[p_b]
@@ -174,6 +191,7 @@ def symmetric_surface_distances_px(pred: np.ndarray, gt: np.ndarray, class_id: i
 
 
 def msd_mm(distances_px: np.ndarray, spacing_mm: float) -> float:
+    """Mean surface distance in mm from pixel distances (NaN entries dropped; NaN if none left)."""
     d = distances_px[np.isfinite(distances_px)]
     if d.size == 0:
         return float("nan")
@@ -181,6 +199,7 @@ def msd_mm(distances_px: np.ndarray, spacing_mm: float) -> float:
 
 
 def hd95_mm(distances_px: np.ndarray, spacing_mm: float) -> float:
+    """95th-percentile surface distance in mm from pixel distances (NaN entries dropped)."""
     d = distances_px[np.isfinite(distances_px)]
     if d.size == 0:
         return float("nan")
@@ -193,6 +212,7 @@ def per_class_metrics(
     class_ids: Sequence[int],
     spacing_mm: float,
 ) -> Dict[int, Dict[str, float]]:
+    """Dice, MSD and HD95 (mm, isotropic ``spacing_mm``) per class ID in ``class_ids``."""
     out: Dict[int, Dict[str, float]] = {}
     for cid in class_ids:
         d = symmetric_surface_distances_px(pred, gt, cid)
@@ -205,6 +225,7 @@ def per_class_metrics(
 
 
 def main(argv: List[str] | None = None) -> int:
+    """Write JSON label-frequency and raster pixel-count stats to ``--out_json`` and print a summary."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--raw_root",

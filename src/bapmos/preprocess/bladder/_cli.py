@@ -7,6 +7,12 @@ from pathlib import Path
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the PFUS1 bladder preprocess steps (convert, splits, verify) in order.
+
+    Masks are written to ``<out>/masks`` and patient splits to
+    ``<out>/splits_patient_70_15_15_seed42``. Returns the first non-zero step
+    exit code, else 0.
+    """
     p = argparse.ArgumentParser(
         prog="python -m bapmos.preprocess.bladder",
         description="Prepare PFUS1 bladder data under data/bladder/pfus1/",

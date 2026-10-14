@@ -49,6 +49,7 @@ class LabelMode(str, Enum):
 
 
 def labels_for_mode(mode: LabelMode) -> Tuple[str, ...]:
+    """Return the JSON label strings exposed by ``mode`` (all eight or the five-label subset)."""
     if mode is LabelMode.ALL:
         return tuple(name for name, _ in PFUS1_ALL_LABELS)
     if mode is LabelMode.SUBSET_FIVE:

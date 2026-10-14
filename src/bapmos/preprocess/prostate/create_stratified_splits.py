@@ -69,6 +69,8 @@ from bapmos.paths import (
 
 @dataclass(frozen=True)
 class OrganTaxonomy:
+    """Named organ set; ``class_ids`` and ``display_names`` follow the order of ``organs``."""
+
     name: str
     organs: tuple
 
@@ -98,6 +100,10 @@ DATASET_ALIASES: Dict[str, Path] = {
 
 
 def resolve_dataset_arg(spec: str) -> Path:
+    """Map a dataset alias (``simulation``, ``case_1``, ``case_2``) or a path to a dataset root.
+
+    Relative paths are resolved against the repository root.
+    """
     s = spec.strip()
     if s in DATASET_ALIASES:
         return DATASET_ALIASES[s]
@@ -115,6 +121,11 @@ def combined_mask_path(image_path: Path, mask_dir: Path) -> Path:
 
 
 def detect_taxonomy(mask_dir: Path, sample: int = 20) -> OrganTaxonomy:
+    """Guess clinical vs simulation taxonomy from the largest class ID in the first ``sample`` masks.
+
+    Class 4 (urethra) only exists in the clinical taxonomy, so a maximum ID of 4
+    or more means clinical; anything lower is treated as simulation.
+    """
     masks = sorted(mask_dir.glob("*_combined_mask.png"))[:sample]
     if not masks:
         raise FileNotFoundError(f"No combined masks under {mask_dir}")
@@ -180,6 +191,8 @@ def split_bucket(
     n_val = max(1, int(round(val_frac * n)))
     n_test = max(1, n - n_train - n_val)
     total = n_train + n_val + n_test
+    # If the rounded counts overshoot n, trim from the largest split first (keeping
+    # every split >= 1); any shortfall goes to train.
     if total > n:
         adjusted = {"train": n_train, "val": n_val, "test": n_test}
         overflow = total - n
@@ -246,6 +259,7 @@ def rebalance_organ_coverage(
         return _flatten(bucketed_train) + _flatten(bucketed_val) + _flatten(bucketed_test)
 
     def count_organ(split: str, idx: int) -> int:
+        """Number of slices in ``split`` that contain organ ``idx``."""
         c = 0
         for f in _flatten(B[split]):
             if file_to_pattern[f][idx]:
@@ -343,6 +357,15 @@ def stratify(
     *,
     canonical_masks_only: bool = True,
 ) -> Dict[str, Any]:
+    """Split slices into train/val/test stratified by organ-combination pattern.
+
+    Each slice is bucketed by which organs its combined mask contains; every bucket is
+    split with :func:`split_bucket`, then :func:`rebalance_organ_coverage` moves slices
+    so each organ appears in train and test (and val when possible). Slices without a
+    combined mask are skipped; background-only slices are excluded when
+    ``exclude_background_only``. Writes ``{train,val,test}.txt``, ``split_summary.*``
+    and ``stratification_report.*`` to ``out_dir`` and returns the summary dict.
+    """
     rng = random.Random(seed)
     if canonical_masks_only:
         mask_dir = find_combined_masks_dir(dataset_root)
@@ -408,6 +431,7 @@ def stratify(
                 )
 
     def organ_counts(files: List[str]) -> Dict[str, int]:
+        """Slices per organ (by display name) among ``files``."""
         c = {name: 0 for name in taxonomy.display_names}
         for f in files:
             for i, present in enumerate(file_to_pattern[f]):
@@ -619,6 +643,7 @@ def _write_run_aggregate(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Create splits for ``--dataset`` or ``--all`` and mirror them under ``data/prostate/stratified_splits/``."""
     p = argparse.ArgumentParser(
         prog="python -m bapmos.preprocess.prostate.create_stratified_splits",
         description=__doc__,

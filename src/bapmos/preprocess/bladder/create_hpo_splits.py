@@ -66,6 +66,7 @@ def _select_patients(patients: Sequence[str], *, patient_fraction: float, seed: 
     rng = random.Random(seed)
     shuffled = list(unique)
     rng.shuffle(shuffled)
+    # At least 2 patients so the cohort can be split into search train and val.
     n = min(len(unique), max(2, int(round(len(unique) * patient_fraction))))
     return sorted(shuffled[:n])
 
@@ -78,6 +79,7 @@ def _split_patients_train_val(
     unique = sorted(set(patients))
     if len(unique) < 2:
         raise ValueError("Need at least 2 patients to form search train/val.")
+    # Offset seed (4243 by default) so the val draw is independent of the cohort draw.
     rng = random.Random(seed + 1)
     shuffled = list(unique)
     rng.shuffle(shuffled)
@@ -140,6 +142,7 @@ def build_hpo_splits(
 
 
 def main() -> None:
+    """CLI: build the search split under ``--data_root``; refuses to overwrite without ``--force``."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--data_root", type=Path, default=pfus1_bundle_dir(), help="PFUS1 bundle (default: data/bladder/pfus1).")
     parser.add_argument("--parent_splits_subdir", default=DEFAULT_PARENT_SPLIT)

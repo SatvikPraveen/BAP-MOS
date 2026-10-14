@@ -298,6 +298,12 @@ def analyze_dataset(
     repo_root: Path,
     combined_masks_override: Optional[Path] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Organ presence for every slice PNG of ``dataset_root``.
+
+    Returns ``(rows, meta)``: one row per slice (``slice``, ``multiclass_status``,
+    ``pattern``, ``organs_present``) and a metadata dict recording which
+    combined-mask directory was used and how it was chosen.
+    """
     images = list_images(dataset_root)
     mask_dir, selection_source, candidate_dirs = discover_combined_masks_dir(
         dataset_root, repo_root, override=combined_masks_override
@@ -380,6 +386,7 @@ def write_csv(
     rows: List[Dict[str, Any]],
     organ_columns: List[str],
 ) -> None:
+    """Write one CSV row per slice with a 0/1 column per organ in ``organ_columns``."""
     fieldnames = ["slice", "multiclass_status", "pattern"] + organ_columns
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as f:
@@ -403,6 +410,7 @@ def write_text_summary(
     meta: Dict[str, Any],
     rows: List[Dict[str, Any]],
 ) -> None:
+    """Write a human-readable report: mask source, pattern histogram and per-slice organs."""
     lines: List[str] = []
     lines.append("=" * 72)
     lines.append(f"{case_id} — organ presence per slice")
@@ -451,6 +459,7 @@ def write_text_summary(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Write ``<case_id>.{csv,json,txt}`` per dataset and ``index.json`` under ``--out``."""
     root = _repo_root()
     p = argparse.ArgumentParser(
         prog="python -m bapmos.preprocess.delineation.report_slice_organ_presence",
