@@ -33,9 +33,17 @@ from PIL import Image
 from tqdm import tqdm
 import json
 
-from comparison_calculator import ComparisonCalculator
-from volume_overlay_renderer import VolumeOverlayRenderer
-from slice_comparison_renderer import SliceComparisonRenderer
+# The 3D renderers are an external package (3D_Project_Inference/) that is not shipped
+# with this repository; the module imports without them and main() explains what is needed.
+try:
+    from comparison_calculator import ComparisonCalculator
+    from volume_overlay_renderer import VolumeOverlayRenderer
+    from slice_comparison_renderer import SliceComparisonRenderer
+except ImportError as _renderer_import_error:
+    ComparisonCalculator = VolumeOverlayRenderer = SliceComparisonRenderer = None
+    _RENDERER_IMPORT_ERROR = _renderer_import_error
+else:
+    _RENDERER_IMPORT_ERROR = None
 
 
 ORGAN_NAMES = {
@@ -522,6 +530,13 @@ def main():
     parser.add_argument('--phase', type=str, help='Process specific phase only')
     parser.add_argument('--experiment', type=str, help='Process specific experiment only')
     args = parser.parse_args()
+
+    if _RENDERER_IMPORT_ERROR is not None:
+        raise SystemExit(
+            "3D visualizations need the external renderer modules (comparison_calculator, "
+            "volume_overlay_renderer, slice_comparison_renderer) in 3D_Project_Inference/ "
+            f"at the repository root; they are not shipped with BAP-MOS ({_RENDERER_IMPORT_ERROR})."
+        )
     
     viz_base = Path(args.viz_base)
     output_base = Path(args.output_base)

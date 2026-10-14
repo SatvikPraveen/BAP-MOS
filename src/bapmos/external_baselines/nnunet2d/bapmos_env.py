@@ -129,6 +129,15 @@ def require_checkpoint_train_env(*, exit_on_error: bool = True) -> bool:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
+    import argparse
+
+    argparse.ArgumentParser(
+        description=(
+            "Check the environment before nnUNetv2_train with BAP-MOS k-fold checkpointing. "
+            "Reads BAPMOS_NNUNET_DATA_ROOT (or BAPMOS_DATA_ROOT) and exits non-zero if it is "
+            "missing or invalid."
+        )
+    ).parse_args(argv)
     require_checkpoint_train_env(exit_on_error=True)
 
 
