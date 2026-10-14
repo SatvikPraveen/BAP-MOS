@@ -117,19 +117,3 @@ class BoxPointSampler:
             f"point_ratio={self.point_ratio:.2f}, "
             f"seed={self.seed})"
         )
-
-
-if __name__ == "__main__":
-    # Test the sampler
-    sampler = BoxPointSampler(box_ratio=0.7, point_ratio=0.3, seed=42)
-    
-    # Sample 1000 prompts
-    for i in range(1000):
-        prompt_type = sampler.sample_prompt_type(f"sample_{i}", epoch=0)
-    
-    # Check statistics
-    stats = sampler.get_statistics()
-    print("\nBoxPointSampler Test:")
-    print(f"Expected: box=0.70, point=0.30")
-    print(f"Actual:   box={stats['box_ratio_actual']:.3f}, point={stats['point_ratio_actual']:.3f}")
-    print(f"Counts:   box={stats['box_count']}, point={stats['point_count']}, total={stats['total']}")

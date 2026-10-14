@@ -330,38 +330,3 @@ class MetricsEvaluator:
     def reset(self):
         """Clear all stored metrics."""
         self.per_slice_metrics = []
-
-
-if __name__ == "__main__":
-    # Test the evaluator
-    print("\n=== Metrics Evaluator Test ===\n")
-    
-    evaluator = MetricsEvaluator(
-        pixel_spacing=(0.5, 0.5),
-        organs=["Rectum", "Bladder", "PTV1"]
-    )
-    
-    # Simulate evaluating 10 slices for Rectum
-    np.random.seed(42)
-    for i in range(10):
-        # Create fake masks
-        gt = np.zeros((100, 100), dtype=np.uint8)
-        gt[30:70, 30:70] = 1
-        
-        # Add some noise to prediction
-        pred = gt.copy()
-        if i > 0:  # Keep first one perfect
-            noise = np.random.randint(-5, 5, size=2)
-            pred = np.roll(pred, noise, axis=(0, 1))
-        
-        evaluator.evaluate_slice(pred, gt, "Rectum", slice_idx=i, image_id=f"slice_{i:03d}")
-    
-    # Aggregate
-    summary = evaluator.aggregate_metrics("Rectum")
-    
-    print("Rectum metrics (10 slices):")
-    print(f"  Valid boundary slices: {summary['n_valid_boundary']}/{summary['n_slices']}")
-    print(f"  MSD: {summary['msd_mm_mean']:.3f} ± {summary['msd_mm_std']:.3f} mm")
-    print(f"  HD95: {summary['hd95_mm_mean']:.3f} ± {summary['hd95_mm_std']:.3f} mm")
-    print(f"  Dice: {summary['dice_mean']:.3f} ± {summary['dice_std']:.3f}")
-    print(f"  Empty pred rate: {summary['empty_pred_rate']:.1%}")

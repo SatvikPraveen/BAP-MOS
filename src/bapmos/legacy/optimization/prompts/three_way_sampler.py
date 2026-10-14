@@ -134,31 +134,3 @@ class ThreeWaySampler:
             f"probs=[box={self.box_prob:.3f}, point={self.point_prob:.3f}, both={self.both_prob:.3f}], "
             f"seed={self.seed})"
         )
-
-
-if __name__ == "__main__":
-    # Test the sampler with balanced ratio
-    print("\n=== Test 1: Balanced (1:1:1) ===")
-    sampler1 = ThreeWaySampler(box_weight=1, point_weight=1, both_weight=1, seed=42)
-    
-    for i in range(1000):
-        mode = sampler1.sample_prompt_mode(f"sample_{i}", epoch=0)
-    
-    stats1 = sampler1.get_statistics()
-    print(f"Expected: box=0.333, point=0.333, both=0.333")
-    print(f"Actual:   box={stats1['box_ratio_actual']:.3f}, "
-          f"point={stats1['point_ratio_actual']:.3f}, "
-          f"both={stats1['both_ratio_actual']:.3f}")
-    
-    # Test with 2:3:5 ratio
-    print("\n=== Test 2: Prof-style (2:3:5) ===")
-    sampler2 = ThreeWaySampler(box_weight=2, point_weight=3, both_weight=5, seed=42)
-    
-    for i in range(1000):
-        mode = sampler2.sample_prompt_mode(f"sample_{i}", epoch=0)
-    
-    stats2 = sampler2.get_statistics()
-    print(f"Expected: box=0.200, point=0.300, both=0.500")
-    print(f"Actual:   box={stats2['box_ratio_actual']:.3f}, "
-          f"point={stats2['point_ratio_actual']:.3f}, "
-          f"both={stats2['both_ratio_actual']:.3f}")

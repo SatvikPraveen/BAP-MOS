@@ -346,34 +346,3 @@ def compute_all_metrics(
         "false_positive_empty_gt": false_positive_empty_gt,
         "empty_pred_failure": empty_pred_failure
     }
-
-
-if __name__ == "__main__":
-    # Test the metrics
-    print("\n=== Boundary Metrics Test ===\n")
-    
-    # Create test masks
-    gt = np.zeros((100, 100), dtype=np.uint8)
-    gt[30:70, 30:70] = 1  # 40x40 square
-    
-    pred = np.zeros((100, 100), dtype=np.uint8)
-    pred[25:65, 25:65] = 1  # Slightly shifted 40x40 square
-    
-    # Assume pixel spacing of 0.5 mm/pixel
-    spacing = (0.5, 0.5)
-    
-    # Compute metrics
-    metrics = compute_all_metrics(pred, gt, spacing, organ_name="test")
-    
-    print("Test case: 40x40 square vs slightly shifted square")
-    print(f"Pixel spacing: {spacing} mm/pixel")
-    print(f"\nPrimary metrics (boundary-aware):")
-    print(f"  HD95: {metrics['hd95_mm']:.3f} mm" if metrics['hd95_mm'] else "  HD95: None")
-    print(f"  MSD:  {metrics['msd_mm']:.3f} mm" if metrics['msd_mm'] else "  MSD:  None")
-    print(f"\nSecondary metrics (reporting only):")
-    print(f"  Dice: {metrics['dice']:.3f}")
-    print(f"  IoU:  {metrics['iou']:.3f}")
-    print(f"\nFlags:")
-    print(f"  Valid boundary: {metrics['valid_boundary']}")
-    print(f"  GT empty: {metrics['gt_empty']}")
-    print(f"  Pred empty: {metrics['pred_empty']}")
