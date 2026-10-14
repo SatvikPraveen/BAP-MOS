@@ -1,0 +1,10 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+nnunet,pfus1_seed43_rep2,43,pfus1,Pubis,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
+nnunet,pfus1_seed43_rep2,43,pfus1,Urethra,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
+nnunet,pfus1_seed43_rep2,43,pfus1,Bladder,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
+nnunet,pfus1_seed43_rep2,43,pfus1,Uterus,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
+nnunet,pfus1_seed43_rep2,43,pfus1,Vagina,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
+nnunet,pfus1_seed43_rep2,43,pfus1,Anus,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
+nnunet,pfus1_seed43_rep2,43,pfus1,Rectum,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
+nnunet,pfus1_seed43_rep2,43,pfus1,Levator ani muscle,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
+nnunet,pfus1_seed43_rep2,43,pfus1,all,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/bladder/pfus1/nnunet/pfus1_seed43_rep2/metrics/summary_metrics.csv
