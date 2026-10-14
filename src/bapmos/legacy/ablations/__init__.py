@@ -3,7 +3,7 @@ Historical ablation/sweep **helpers** (not the main paper training path).
 
 Training still goes through ``bapmos.legacy.optimization.trainer`` (and baseline
 modules) with YAML + CLI overrides. This package holds naming presets and path
-constants so ablation SLURM and configs stay organized.
+constants so ablation job scripts and configs stay organized.
 
 See ``docs/EXPERIMENT_LADDER.md``.
 """

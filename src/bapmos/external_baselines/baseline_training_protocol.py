@@ -45,6 +45,11 @@ def production_wandb_tags(
     seed: Optional[int] = None,
     extra: Optional[List[str]] = None,
 ) -> List[str]:
+    """Build the W&B tag list for a production external-baseline run.
+
+    ``experiment`` defaults to ``production_seed<seed>`` (seed 42 when unset); ``extra``
+    tags are appended without duplicates.
+    """
     if experiment is None:
         experiment = f"production_seed{int(seed) if seed is not None else 42}"
     tags = [
@@ -62,6 +67,7 @@ def production_wandb_tags(
 
 
 def setup_wandb_metric_axes() -> None:
+    """Make ``epoch`` the step axis for all ``train/``, ``val/`` and ``test/`` W&B metrics."""
     import wandb
 
     wandb.define_metric("epoch")

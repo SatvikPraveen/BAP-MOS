@@ -21,7 +21,7 @@ def resolve_boundary_tmpdir() -> str:
 
     Layout (preferred)::
 
-        $NNUNET_BOUNDARY_TMPDIR/<run_or_seed>/   # set by Slurm per seed
+        $NNUNET_BOUNDARY_TMPDIR/<run_or_seed>/   # set per seed by the job launcher
         or $BAP_MOS_EXPORTS_ROOT/../tmp/nnunet_boundary/<run_or_seed>/
 
     When ``NNUNET_BOUNDARY_TMPDIR`` already points at a seed-specific directory,
@@ -72,6 +72,10 @@ def resolve_evaluator_organ_labels(data_root: Optional[str] = None) -> List[str]
 
 
 def checkpoint_objective_metric() -> str:
+    """Checkpoint-selection objective from ``NNUNET_CHECKPOINT_OBJECTIVE`` (default ``ptv_kfold_msd``).
+
+    The legacy value ``ema_fg_dice`` is mapped to ``organ_balanced_msd``.
+    """
     raw = os.environ.get("NNUNET_CHECKPOINT_OBJECTIVE", "ptv_kfold_msd").strip()
     if raw == "ema_fg_dice":
         return "organ_balanced_msd"
@@ -129,6 +133,7 @@ def require_checkpoint_train_env(*, exit_on_error: bool = True) -> bool:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
+    """CLI preflight: exit non-zero if the k-fold checkpoint environment is invalid."""
     import argparse
 
     argparse.ArgumentParser(

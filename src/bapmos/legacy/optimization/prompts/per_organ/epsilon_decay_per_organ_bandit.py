@@ -224,7 +224,9 @@ class EpsilonDecayBandit:
                     selected_arm = max(self.arm_avg_rewards, key=self.arm_avg_rewards.get)
                     was_exploration = False
                 
-                # Update epsilon according to decay schedule
+                # Update epsilon according to decay schedule. decay_step only
+                # advances on epsilon-greedy steps (not warmup or forced pulls),
+                # so the schedule starts once every arm has its minimum pulls.
                 self.decay_step += 1
                 self.epsilon = self._compute_epsilon(self.decay_step)
         

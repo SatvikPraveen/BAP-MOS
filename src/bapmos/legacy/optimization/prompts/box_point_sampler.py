@@ -57,6 +57,8 @@ class BoxPointSampler:
         Returns:
             str: Either "box" or "point"
         """
+        # The draw depends only on (sample_id, epoch, seed), not on call order or
+        # worker; self.rng is not consumed here.
         # Create deterministic seed based on sample_id and epoch
         seed_str = f"{sample_id}_epoch{epoch}_seed{self.seed}"
         # Use stable hash (MD5) instead of process-salted hash() for reproducibility

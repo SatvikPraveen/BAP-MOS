@@ -32,7 +32,8 @@ def compute_boundary_mask(binary_mask: np.ndarray, thickness: int = 1) -> np.nda
     kernel = np.ones((2*thickness+1, 2*thickness+1), np.uint8)
     eroded = cv2.erode(binary_mask.astype(np.uint8), kernel, iterations=1)
     
-    # Boundary = original - eroded
+    # Boundary = original - eroded (inner boundary: foreground pixels that lie
+    # within `thickness` px of background; 8-connected for thickness=1)
     boundary = binary_mask.astype(np.uint8) - eroded
     
     return boundary

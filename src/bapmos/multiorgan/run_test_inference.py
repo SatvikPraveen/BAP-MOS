@@ -64,6 +64,14 @@ def run_multiorgan_sam_test_export(
     force_inference_output: bool = False,
     device: str = "cuda",
 ) -> None:
+    """Load a multi-organ SAM box/points checkpoint and export the stratified test split.
+
+    The prompt type is read from the run config (falling back to the checkpoint), the
+    matching trainer is rebuilt and its mask decoder loaded from ``checkpoint``.
+    Predictions use the same eval-time GT prompts as validation and are written by
+    ``export_stratified_sites`` under ``output_dir`` (one subfolder per test site for
+    pooled data). Refuses non-primary-seed runs unless ``force_inference_output``.
+    """
     checkpoint = resolve_under_project(checkpoint)
     run_dir = checkpoint.parent
     cfg = load_run_config(run_dir, checkpoint)
@@ -105,6 +113,7 @@ def run_multiorgan_sam_test_export(
 
     @torch.no_grad()
     def predict_fn(image_rgb, mask_multi, fn: str):
+        """Return the 256x256 label map for one test slice with the run's prompt type."""
         out = trainer._forward_one(image_rgb, mask_multi, fn, is_train=False)
         if out is None:
             return None
@@ -133,6 +142,7 @@ def run_multiorgan_sam_test_export(
 
 
 def main() -> None:
+    """CLI wrapper around ``run_multiorgan_sam_test_export``."""
     p = argparse.ArgumentParser(
         description=(
             "Export multi-organ SAM box/points test split under inference_output/ "

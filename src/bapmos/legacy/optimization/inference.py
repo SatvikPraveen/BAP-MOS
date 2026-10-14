@@ -247,6 +247,8 @@ class OptimizationInference:
     
     def _points_prompt(self, mask_multi, original_size, sample_id):
         """Generate per-organ point prompts."""
+        # Same per-sample seed as training-time validation (no epoch offset), so
+        # test prompts are reproducible.
         rng = stable_rng_from_id(sample_id, self.config["seed"])
         
         from bapmos.legacy.pfus1_advanced.scale_aware_prompts import (
@@ -433,11 +435,15 @@ class OptimizationInference:
             class_id = self._organ_to_class[organ_name]
             logits[0, class_id, :, :] = organ_masks_stacked[idx, :, :]
 
+        # Background logit = logit(1 - max_organ sigmoid), so a pixel is background
+        # unless some organ's probability exceeds 0.5 (absent organs stay at logit 0).
         organ_probs = torch.sigmoid(logits[:, 1:, :, :])
         organ_union_prob = organ_probs.max(dim=1, keepdim=True)[0]
         background_prob = 1.0 - organ_union_prob
         logits[:, 0:1, :, :] = torch.logit(background_prob, eps=1e-7)
 
+        # Argmax at SAM's 256x256 low-res grid, then nearest-neighbour upsample the
+        # label map (not the logits) to the original (H, W).
         pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
         pred_resized = cv2.resize(
             pred_classes.astype(np.float32),
@@ -613,7 +619,7 @@ class OptimizationInference:
         # Get final prediction
         pred_classes = torch.argmax(torch.softmax(logits, dim=1), dim=1).cpu().numpy()[0]
         
-        # Resize to original size
+        # Resize to original size: label map argmaxed at 256x256, nearest-neighbour upsampled
         pred_resized = cv2.resize(
             pred_classes.astype(np.float32),
             (original_size[1], original_size[0]),
@@ -845,6 +851,11 @@ class OptimizationInference:
 
 
 def main():
+    """CLI entry point: evaluate one optimization checkpoint on the test split.
+
+    Writes evaluation metadata plus the CSVs (and optional masks/panels) listed
+    in the module docstring to ``--output_dir`` or the default method output folder.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to best_checkpoint.pth")
     parser.add_argument(

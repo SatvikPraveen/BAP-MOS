@@ -52,6 +52,7 @@ class MedsamLoadReport:
         }
 
     def log_summary(self) -> None:
+        """Print overlap ratio and missing/unexpected key counts (key lists only when short)."""
         name = Path(self.checkpoint_path).name
         print(
             f"MedSAM load {name}: overlap={self.overlap_ratio:.1%} "
@@ -71,6 +72,7 @@ class MedsamLoadReport:
         max_missing_keys: int = DEFAULT_MAX_MISSING_KEYS,
         min_overlap_ratio: float = DEFAULT_MIN_OVERLAP_RATIO,
     ) -> None:
+        """Raise ``ValueError`` if too many model keys are missing or overlap is below the minimum."""
         if self.missing_n > max_missing_keys:
             raise ValueError(
                 f"MedSAM weight overlap too low: {self.missing_n} missing keys "

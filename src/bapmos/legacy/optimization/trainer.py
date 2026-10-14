@@ -114,6 +114,7 @@ PER_ORGAN_PROMPT_STRATEGIES = frozenset({
 # Utils
 # -----------------------------
 def seed_everything(seed: int, deterministic: bool = False):
+    """Seed Python, NumPy and torch (CPU + CUDA); optionally force deterministic cuDNN."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -945,6 +946,8 @@ class OptimizationTrainer:
     
     def _prepare_mask(self, mask_multi):
         """Resize multi-class mask to 256x256."""
+        # 256x256 matches SAM's low-res mask logits; nearest-neighbour keeps
+        # integer class labels (no blended values at organ boundaries).
         mask_resized = cv2.resize(
             mask_multi.astype(np.float32),
             (256, 256),
@@ -957,6 +960,8 @@ class OptimizationTrainer:
     def _points_prompt(self, mask_multi, original_size, sample_id, is_train: bool):
         """Generate per-organ point prompts."""
         base = self.cfg["seed"]
+        # Training points are resampled each epoch; validation points stay
+        # fixed across epochs so checkpoint scores are comparable.
         epoch_offset = (self.current_epoch * 1000) if is_train else 0
         rng = stable_rng_from_id(sample_id, base + epoch_offset)
         
@@ -2008,6 +2013,9 @@ class OptimizationTrainer:
             val_loss, val_dice, _, val_metrics, val_prompt_counts = self.run_epoch(
                 val_loader, train=False
             )
+            # Primary checkpoint score: organ-balanced val MSD, or, with
+            # checkpoint_objective.metric == "ptv_kfold_msd", the mean of per-fold PTV MSDs over a
+            # seeded k-way partition of the validation slices (kfold_n, kfold_seed).
             ckpt_scores = self._validation_checkpoint_scores()
             val_msd = ckpt_scores.primary_msd if ckpt_scores is not None else None
 
@@ -2227,6 +2235,12 @@ class OptimizationTrainer:
         self.logger.info(f"Checkpoints saved to: {run_dir}")
 
     def run_test_export_if_configured(self, test_loader) -> Optional[Dict[str, Any]]:
+        """Evaluate ``best_checkpoint.pth`` on the test split when ``run_test_after_train`` is set.
+
+        Writes evaluation metadata and test metrics to the method's test output
+        directory (derived from the checkpoint path), logs ``test/*`` scalars to
+        W&B, and returns the metrics dict, or ``None`` when skipped.
+        """
         if not self.run_test_after_train or test_loader is None:
             return None
         if not (self._checkpoint_run_dir / "best_checkpoint.pth").is_file():
@@ -2385,6 +2399,12 @@ def apply_replicate_seed_overrides(config: dict) -> None:
 
 
 def main():
+    """CLI entry point: train one optimization experiment from YAML (or resume) and optionally export test metrics.
+
+    Writes ``config.json``, ``metrics.csv``, ``last_checkpoint.pth`` and
+    ``best_checkpoint.pth`` under ``<run_root>/<strategy>/<run_name>/`` and a
+    log file under ``<log_root>/<strategy>/``.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
     parser.add_argument("--experiment", type=str, required=True, help="Experiment name from config")

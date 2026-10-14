@@ -104,6 +104,14 @@ def apply_unet_training_cli_overrides(
 
 
 class UNetMultiOrganTrainer:
+    """Multiclass ``smp.Unet`` (ImageNet encoder) trainer on 256x256 resized slices.
+
+    Adam at a flat LR (cosine annealing if ``flat_lr`` is false), regional CE+Dice loss,
+    gradient clipping at 1.0, and best-checkpoint selection / early stopping on the
+    configured validation MSD objective. Boundary metrics are computed on native-resolution
+    masks.
+    """
+
     def __init__(self, config: dict):
         self.cfg = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -206,6 +214,11 @@ class UNetMultiOrganTrainer:
         return (summary if summary is not None else {}), evaluator
 
     def run_epoch(self, loader, train: bool):
+        """One pass over ``loader``; slices with empty masks are skipped.
+
+        Returns ``(avg_loss, avg_fg_dice, val_summary, val_evaluator)``; the last two are
+        ``None`` for training passes.
+        """
         if train:
             self.model.train()
         else:
@@ -299,6 +312,7 @@ class UNetMultiOrganTrainer:
         return avg_loss, avg_dice, None, None
 
     def save_checkpoint(self, path: Path, val_msd: Optional[float] = None) -> None:
+        """Atomically write model/optimizer/scheduler state, best MSD and patience counter to ``path``."""
         ckpt = {
             "format_version": 1,
             "epoch": self.current_epoch,
@@ -350,6 +364,12 @@ class UNetMultiOrganTrainer:
         return start
 
     def train_loop(self, train_loader, val_loader, *, start_epoch: int = 0) -> None:
+        """Train from ``start_epoch`` to ``max_epochs`` with early stopping.
+
+        Each epoch writes ``last_checkpoint.pth``, updates ``best_checkpoint.pth`` when the
+        validation objective improves by at least ``min_delta``, appends a row to
+        ``metrics.csv`` and logs to W&B.
+        """
         run_dir = Path(self.cfg["run_dir"])
         run_dir.mkdir(parents=True, exist_ok=True)
         csv_path = run_dir / "metrics.csv"
@@ -401,6 +421,7 @@ class UNetMultiOrganTrainer:
 
             self.save_checkpoint(run_dir / "last_checkpoint.pth", val_msd=val_msd)
 
+            # An empty validation pass neither counts as improvement nor consumes patience.
             if val_loss == 0.0 and val_dice == 0.0:
                 print("WARNING: val had 0 valid samples this epoch")
             elif is_better_checkpoint(val_msd, self.best_val_msd, min_delta=self.val_msd_min_delta):
@@ -613,6 +634,12 @@ def init_unet_wandb(
 
 
 def main() -> None:
+    """Train (or resume / test-only evaluate) the multiclass U-Net external baseline.
+
+    Writes ``config.json``, checkpoints and ``metrics.csv`` under
+    ``<run_root>/unet/<run_name>/``; after training, exports test metrics for
+    ``best_checkpoint.pth`` unless the dataset has only per-site test splits.
+    """
     p = argparse.ArgumentParser(description="SMP U-Net multiclass baseline")
     p.add_argument("--data_root", type=str, default=None)
     p.add_argument("--encoder", type=str, default="resnet34")

@@ -63,6 +63,13 @@ def build_bundle(
     overwrite: bool,
     max_frames: int | None,
 ) -> Dict[str, Any]:
+    """Crop/letterbox every raw frame and warp its mask onto the same canvas, writing the bundle under ``out_root``.
+
+    Frames whose outputs already exist are skipped unless ``overwrite``; the
+    rewritten ``preprocess_manifest.jsonl`` lists only frames processed in this
+    call. Also replaces the copied split folder and writes
+    ``reports/preprocess_stats.json``. Returns the stats dict.
+    """
     images_out = out_root / "images"
     masks_out = out_root / "masks" / "combined_masks"
     images_out.mkdir(parents=True, exist_ok=True)
@@ -106,6 +113,8 @@ def build_bundle(
             canvas_h=canvas_h,
             strip_legend=strip_legend,
         )
+        # Mask reuses the image's crop/scale/pad params with nearest-neighbour
+        # interpolation so labels stay aligned and integral.
         proc_mask = warp_mask_with_params(mask, params)
 
         out_img.parent.mkdir(parents=True, exist_ok=True)
@@ -147,6 +156,7 @@ def build_bundle(
 
 
 def main(argv: List[str] | None = None) -> int:
+    """CLI wrapper around :func:`build_bundle`; returns 1 if raw images, masks or splits are missing."""
     parser = argparse.ArgumentParser(description="Build data/bladder/pfus1_advanced bundle.")
     parser.add_argument(
         "--out_root",

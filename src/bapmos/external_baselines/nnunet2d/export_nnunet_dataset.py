@@ -145,6 +145,12 @@ def export_test_images_ts(
 
 
 def main() -> None:
+    """Write ``Dataset<ID>_<name>/`` (nnU-Net v2 raw layout) from a BAP-MOS data bundle.
+
+    Default mode recreates the folder with ``imagesTr/``, ``labelsTr/``, ``dataset.json`` and
+    ``case_mapping.json`` (case id -> sample key / split). ``--test_images_only`` instead adds
+    ``imagesTs/`` and the ``test`` section of an existing ``case_mapping.json``.
+    """
     p = argparse.ArgumentParser(description="Export data/ bundle to nnUNet_raw")
     p.add_argument("--data_root", type=str, required=True, help="e.g. data/prostate/pooled")
     p.add_argument(
@@ -264,6 +270,7 @@ def main() -> None:
                 raise FileNotFoundError(f"Missing mask: {src_mask}")
 
             case_str = f"case{case_idx:05d}"
+            # nnU-Net expects ``<case>_0000.png`` for channel 0 and ``<case>.png`` for the label.
             case_idx += 1
             _write_grayscale_image(src_img, images_tr / f"{case_str}_0000.png")
 
