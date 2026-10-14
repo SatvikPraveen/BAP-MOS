@@ -1,4 +1,4 @@
-# BAPMOS — optional dependencies for outer-loop Optuna HPO
+# BAP-MOS: optional dependencies for the outer-loop (TPE) search
 #
 # Install into the training env after core requirements::
 #
@@ -11,4 +11,6 @@
 
 -r requirements.txt
 
-optuna>=3.6.0
+# Pinned to the version used for the paper's studies: TPE proposals for a fixed
+# seed can differ between Optuna releases.
+optuna==4.9.0

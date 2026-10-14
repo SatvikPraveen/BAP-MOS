@@ -1,22 +1,19 @@
-# BAPMOS — local CPU workstation (analysis, preprocessing, light tests)
+# BAP-MOS: CPU-only machine (analysis, preprocessing, tests)
 #
-# Create and use a virtual environment::
+# From the repository root, in a fresh virtual environment (Python 3.10 or 3.11)::
 #
 #   python3.10 -m venv .venv
 #   source .venv/bin/activate          # Windows: .venv\Scripts\activate
 #   pip install --upgrade pip
+#   pip install torch==2.13.0 torchvision==0.28.0 --index-url https://download.pytorch.org/whl/cpu
 #   pip install -r requirements_cpu.txt
 #   export PYTHONPATH="$(pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
 #
-# PyTorch is installed from the official CPU wheel index (no CUDA). On your
-# HPC cluster, use CUDA-enabled builds instead, e.g.::
+# Installing torch from the CPU index first avoids downloading CUDA builds; the rest
+# comes from PyPI. (Mixing the two indexes in one install fails with uv, whose default
+# strategy resolves idna/urllib3/requests from the torch index.)
 #
-#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-#   (pick the CUDA version your cluster provides; see https://pytorch.org/get-started/locally/)
-#
-# Same package set as ``requirements.txt``, plus the CPU index line below.
-# For notebook / Plotly / PyVista extras, also install ``requirements_dev.txt``.
-
---extra-index-url https://download.pytorch.org/whl/cpu
+# On a GPU machine, install the CUDA build of torch instead (see requirements.txt).
+# For notebook / Plotly / PyVista extras, also install requirements_dev.txt.
 
 -r requirements.txt

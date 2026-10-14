@@ -11,7 +11,9 @@
 #
 # Final reproduction path (inner loop / paper method, after outer-loop search):
 # - decoder loss: scheduled CE+Dice + boundary (loss_mode: kervadec)
-# - bandit reward: composite_fixed_clip (MSD + λ·HD95, λ=3)
+# - bandit reward: composite_fixed_clip,
+#     R = 1 - [0.3(1 - Dice) + 0.5 min(MSD, tau)/tau + 0.2 min(HD95, 3 tau)/(3 tau)]
+#   (hd95_lambda = 3 sets the HD95 clip to 3 tau; tau is the searched clip_max_mm)
 # - checkpoint + TPE objective: validation MSD (ptv_kfold_msd; Bladder on PFUS1)
 # - training seeds: ALWAYS three — 42 (primary), 43 (rep2), 44 (rep3)
 #   run names: pooled_seed42 / pooled_seed43_rep2 / pooled_seed44_rep3
@@ -30,7 +32,7 @@ training:
 
 reward:
   mode: composite_fixed_clip
-  clip_max_mm: 20.0
+  clip_max_mm: 20.0   # search starting point; final runs use the tau in selected/
   hd95_lambda: 3.0
 
 checkpoint_objective:
