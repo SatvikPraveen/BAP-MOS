@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import sys
 from typing import Dict, Optional
 
@@ -24,27 +25,23 @@ def _canonical_name(fullname: str) -> Optional[str]:
 
 class _LegacyAliasFinder:
     """
-    Alias finder using the legacy ``load_module`` hook.
+    Meta-path finder that resolves a deprecated name to the canonical module object.
 
-    ``find_spec`` + ``create_module`` still dual-loads under some PathFinder
-    interactions when on-disk shim packages exist; ``load_module`` returns the
-    canonical module object and keeps ``sys.modules`` identity.
+    ``create_module`` returns the already-imported canonical module and ``exec_module``
+    does nothing, so ``bapmos.optimization.metrics is bapmos.legacy.optimization.metrics``
+    and classes stay identical (``isinstance`` keeps working across both names).
     """
 
-    def find_module(self, fullname, path=None):  # noqa: ARG002
-        if _canonical_name(fullname) is not None:
-            return self
-        return None
+    def find_spec(self, fullname, path=None, target=None):  # noqa: ARG002
+        if _canonical_name(fullname) is None:
+            return None
+        return importlib.util.spec_from_loader(fullname, self)
 
-    def load_module(self, fullname):
-        if fullname in sys.modules:
-            return sys.modules[fullname]
-        real = _canonical_name(fullname)
-        if real is None:
-            raise ImportError(fullname)
-        mod = importlib.import_module(real)
-        sys.modules[fullname] = mod
-        return mod
+    def create_module(self, spec):
+        return importlib.import_module(_canonical_name(spec.name))
+
+    def exec_module(self, module):  # noqa: ARG002
+        """The canonical module is already executed."""
 
 
 def install() -> None:
