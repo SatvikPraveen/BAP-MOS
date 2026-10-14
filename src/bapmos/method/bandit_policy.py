@@ -2,15 +2,19 @@
 Variance-bounded UCB-Tuned bandit for per-organ prompt selection.
 
 Action space A = {'box', 'point', 'both'}. Each organ maintains an independent
-bandit with a FIFO sliding window of curriculum rewards (default W=50).
+bandit with a FIFO sliding window of block rewards in [0, 1] (default W=50).
 
 For arm a after t block updates (t incremented only in ``commit_block_reward``)::
 
-    σ²_a = Var(rewards in deque)
-    V_a  = σ²_a + sqrt(2 ln(t) / N_a)
+    σ²_a = Var(rewards in window)   (sample variance, ddof=1)
+    V_a  = σ²_a + sqrt(2 ln(max(1,t)) / N_a)
     Ṽ_a  = min(0.25, V_a)
-    Bonus_a = sqrt(ln(t) / N_a · Ṽ_a)
+    Bonus_a = sqrt(ln(max(1,t)) / N_a · Ṽ_a)
     UCB_a = Q_a + Bonus_a
+
+Arms with N_a = 0 score +inf. Selection is round-robin for the first
+``warmup_blocks_per_arm * len(arms)`` blocks, then uniform-random among arms with
+fewer than ``min_pulls_per_arm`` commits, then argmax UCB (random tie-break).
 
 **Critical:** ``select_arm()`` does NOT increment t or N_a. Only ``commit_block_reward``
 increments them when validation rewards are committed at block end.
@@ -130,7 +134,7 @@ class VarianceBoundedUCBTuned:
 
     def commit_block_reward(self, arm: Action, reward: float) -> None:
         """
-        Commit reward at block end: update deque, Q_a, N_a, and t.
+        Commit reward (clipped to [0, 1]) at block end: update the window, Q_a, N_a, and t.
         """
         if arm not in self.arms:
             raise ValueError(f"Unknown arm: {arm}")
@@ -192,9 +196,11 @@ class PerOrganBanditPolicy:
         }
 
     def select_arm(self, organ: str) -> Action:
+        """Select the next arm for ``organ`` (does not advance t or N_a)."""
         return self.bandits[organ].select_arm()
 
     def commit_block_reward(self, organ: str, arm: Action, reward: float) -> None:
+        """Commit one block reward for ``organ``'s ``arm`` (advances that organ's t and N_a)."""
         self.bandits[organ].commit_block_reward(arm, reward)
 
     def get_statistics_for_organ(self, organ: str) -> Dict[str, Any]:
@@ -275,7 +281,7 @@ class BlockScheduler:
     """
     Hold bandit arms fixed for K training batches; commit rewards only at block end.
 
-    ``begin_block`` selects arms (no t/N_a increment). ``end_block`` commits curriculum
+    ``begin_block`` selects arms (no t/N_a increment). ``end_block`` commits block
     rewards and advances bandit time steps.
     """
 

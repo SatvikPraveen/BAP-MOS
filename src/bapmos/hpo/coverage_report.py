@@ -86,6 +86,7 @@ def startup_trial_numbers(
 
 
 def write_trials_csv(rows: List[Dict[str, Any]], path: Path) -> None:
+    """Write trial rows to CSV (header from the first row; empty file when no rows)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
         path.write_text("", encoding="utf-8")
@@ -123,6 +124,7 @@ def render_coverage_figure(
     ]
 
     def hits_panel(x_bins, y_bins, x_key, y_key) -> set[Tuple[int, int]]:
+        """Return the (x_bin, y_bin) cells of one 2-D panel hit by the start-up trials."""
         hit: set[Tuple[int, int]] = set()
         for trial in startup_rows:
             params = trial_flat_params(trial)
@@ -218,6 +220,7 @@ def run_coverage_report(
     output_dir: Optional[Path] = None,
     n_startup: int = TPE_N_STARTUP_TRIALS,
 ) -> Dict[str, Path]:
+    """Write ``<dataset>_trials.csv`` (params, timing, best-so-far) and ``<dataset>_startup_coverage.{png,pdf}``."""
     from bapmos.hpo.study_runner import create_study
 
     paths = HpoPaths.for_suite(hpo_suite)

@@ -97,6 +97,8 @@ def overrides_from_flat_searched_clip_scale_organ(params: Dict[str, Any]) -> Dic
 
 @dataclass(frozen=True)
 class SearchSpaceProfile:
+    """Named search box: Optuna sampler hook, enqueued baseline, and flat <-> nested override converters."""
+
     profile_id: str
     description: str
     trial_overrides: Callable[["optuna.Trial"], Dict[str, Any]]
@@ -132,6 +134,7 @@ HPO_SUITE_SEARCH_PROFILE: Dict[str, str] = {
 
 
 def search_profile_for_suite(hpo_suite: str) -> SearchSpaceProfile:
+    """Return the search-space profile for ``hpo_suite`` (case/hyphen-insensitive); raise on unknown suites."""
     key = hpo_suite.lower().replace("-", "_")
     profile_id = HPO_SUITE_SEARCH_PROFILE.get(key)
     if profile_id is None:

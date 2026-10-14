@@ -35,6 +35,8 @@ DEFAULT_HD95_LAMBDA = 3.0
 
 
 class OrganProbeMetrics(TypedDict):
+    """Per-organ validation-probe metrics consumed by the composite reward (distances in mm)."""
+
     msd_mm: float
     hd95_mm: float
     dice: float

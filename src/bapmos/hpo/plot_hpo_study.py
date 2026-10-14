@@ -79,6 +79,8 @@ PARAM_LABEL: Dict[str, str] = {
 
 @dataclass(frozen=True)
 class CompletedTrial:
+    """Successful trial reduced to its number, objective value and float-cast params."""
+
     number: int
     value: float
     params: Dict[str, float]
@@ -118,6 +120,7 @@ def _require_optuna():
 
 
 def datasets_for_suite(hpo_suite: str) -> Tuple[str, ...]:
+    """Datasets plotted for a suite (bladder → ``pfus1``, prostate → ``pooled``)."""
     if hpo_suite in PFUS1_HPO_SUITES:
         return PFUS1_DATASETS
     if hpo_suite in PROSTATE_HPO_SUITES:
@@ -224,6 +227,7 @@ def plot_convergence(
     datasets: Sequence[str],
     out_path: Path,
 ) -> None:
+    """One panel per dataset: every trial's objective plus best-so-far vs completed-trial index."""
     paths = HpoPaths.for_suite(hpo_suite)
     production = paths.production_version.replace("_", ".")
     fig, axes = plt.subplots(1, len(datasets), figsize=(4.5 * len(datasets), 4), sharey=False)
@@ -547,6 +551,7 @@ def plot_optuna_matplotlib_diagnostics(
 
 
 def discover_hpo_suites_with_studies() -> List[str]:
+    """Suite keys with a same-named ``optuna_studies/<suite>/`` directory containing a ``.db``."""
     root = repo_root() / "optuna_studies"
     if not root.is_dir():
         return []
@@ -621,6 +626,7 @@ def plot_suite(
 
 
 def main(argv: Sequence[str] | None = None) -> None:
+    """CLI: write suite and per-dataset study figures (see :func:`plot_suite`)."""
     parser = argparse.ArgumentParser(description="Plot Optuna TPE convergence and parameter trends.")
     parser.add_argument(
         "--hpo-suite",

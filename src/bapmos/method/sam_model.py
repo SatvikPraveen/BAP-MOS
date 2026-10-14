@@ -101,6 +101,10 @@ class FrozenSAMMultiOrgan(nn.Module):
 
     @torch.no_grad()
     def encode_image(self, image_rgb: np.ndarray, device: torch.device) -> Tuple[torch.Tensor, Tuple[int, int]]:
+        """Run the frozen image encoder once; return the (1, 256, 64, 64) embedding and original (H, W).
+
+        The embedding is shared by every organ prompt decoded on the same image.
+        """
         x, original_size = self.prepare_image(image_rgb, device)
         emb = self.sam.image_encoder(x)
         return emb, original_size

@@ -54,6 +54,8 @@ _SEED_RUN_RE = re.compile(r"seed(\d+)")
 
 @dataclass(frozen=True)
 class RunSpec:
+    """One discovered inference run: method folder, run name, run directory and training seed."""
+
     method: str
     run_name: str
     run_dir: Path
@@ -189,6 +191,12 @@ def _read_label_png(path: Path) -> np.ndarray:
 
 
 def audit_corpus(corpus: str, *, repo: Optional[Path] = None) -> Path:
+    """Check each run's saved ``pred_ids`` PNGs against the test split, per site.
+
+    Writes ``results/<corpus>/<dataset>/combined/<corpus>_<dataset>_pred_audit_redone.csv``
+    with counts of expected / saved / missing / shape-mismatched / unreadable
+    predictions and a ``complete_for_native_recompute`` flag; returns its path.
+    """
     repo = repo or project_root()
     data_root = _data_root(corpus, repo)
     masks_dir = find_combined_masks_dir(data_root)
@@ -481,6 +489,11 @@ def _write_mean_std(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
 
 
 def run_corpus(corpus: str, *, repo: Optional[Path] = None) -> Dict[str, Any]:
+    """Audit, re-score every complete run on the native grid, re-ingest into ``by_seed/``, rebuild ``combined/``.
+
+    Prostate runs count as complete only when all three test sites are complete.
+    Returns paths and the lists of recomputed and skipped runs.
+    """
     repo = repo or project_root()
     audit_path = audit_corpus(corpus, repo=repo)
     audit_rows: List[Dict[str, str]] = []
@@ -620,6 +633,7 @@ def ingest_exports_corpus(corpus: str, *, repo: Optional[Path] = None) -> Dict[s
 
 
 def main() -> None:
+    """CLI: ``audit``, ``run`` (audit + recompute + collate) or ``ingest-exports``."""
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)

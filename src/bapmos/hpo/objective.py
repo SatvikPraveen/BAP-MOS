@@ -99,6 +99,8 @@ def read_best_val_msd_mm(run_dir: Path) -> Optional[float]:
     if not metrics_path.is_file():
         return None
 
+    # Both columns carry the per-epoch validation objective; the trial score is its
+    # minimum over all epochs written so far.
     best = float("inf")
     saw_value = False
     with open(metrics_path, newline="", encoding="utf-8") as f:
@@ -269,6 +271,7 @@ def make_objective(
     paths = HpoPaths.for_suite(hpo_suite)
 
     def objective(trial: "optuna.Trial") -> float:
+        """Train one trial's configuration and return its validation objective (lower is better)."""
         import optuna
 
         # Reload so parallel workers see RUNNING/COMPLETE siblings, not a stale cache.

@@ -71,6 +71,7 @@ def write_sites_json(
     *,
     run_name: Optional[str] = None,
 ) -> None:
+    """Write ``<output_dir>/sites.json`` listing the exported site subfolders (and ``run_name``)."""
     payload: dict[str, Any] = {"sites": list(site_labels)}
     if run_name is not None:
         payload["run_name"] = run_name
@@ -124,6 +125,8 @@ def export_stratified_sites(
     else:
         site_iter = list(iter_test_split_datasets(data_root, splits_subdir=splits_subdir))
 
+    # Sites are exported (and scored) independently: pooled prostate gets one bundle
+    # per site under ``<output_dir>/<site>/``; other datasets write a single bundle.
     for label, test_ds in site_iter:
         site_labels.append(label)
         site_out = output_dir / label if pooled else output_dir

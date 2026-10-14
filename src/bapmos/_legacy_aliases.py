@@ -33,11 +33,13 @@ class _LegacyAliasFinder:
     """
 
     def find_spec(self, fullname, path=None, target=None):  # noqa: ARG002
+        """Return a spec served by this finder for aliased names; None for everything else."""
         if _canonical_name(fullname) is None:
             return None
         return importlib.util.spec_from_loader(fullname, self)
 
     def create_module(self, spec):
+        """Import and return the canonical module in place of a new module object."""
         return importlib.import_module(_canonical_name(spec.name))
 
     def exec_module(self, module):  # noqa: ARG002

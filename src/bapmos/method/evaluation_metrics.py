@@ -58,6 +58,7 @@ def multiclass_dice_from_logits(
 
 
 def resolve_taxonomy(data_root: str) -> BaselineTaxonomyProfile:
+    """Taxonomy profile (organs, class mapping, spacing) for a dataset root."""
     return get_baseline_taxonomy_profile(resolve_path(data_root))
 
 
@@ -320,6 +321,7 @@ def build_block_wandb_dict(
     *,
     organ_metrics: Optional[Mapping[str, OrganProbeMetrics]] = None,
 ) -> Dict[str, Any]:
+    """Block-end W&B payload: per-organ probe MSD/HD95/Dice and committed rewards."""
     # Separate top-level namespace from epoch ``bandit/*`` (avoids W&B step-metric overlap).
     log: Dict[str, Any] = {"bandit_block/total_blocks": int(total_blocks)}
     metrics_by_organ = organ_metrics or {}
@@ -378,6 +380,7 @@ def empty_prompt_counts() -> Dict[str, int]:
 def merge_prompt_counts(
     base: Dict[str, int], arms: Mapping[str, str], *, multiplier: int = 1
 ) -> None:
+    """Add ``multiplier`` to ``base[arm]`` for each organ's arm in ``arms`` (in place)."""
     for arm in arms.values():
         if arm in base:
             base[arm] += int(multiplier)
@@ -400,7 +403,14 @@ def export_test_split_metrics(
     method_slug: Optional[str] = None,
     cfg: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Evaluate test split with best checkpoint; write JSON + optional CSV bundle."""
+    """Evaluate test split with best checkpoint; write JSON + optional CSV bundle.
+
+    Loads ``best_checkpoint.pth`` (decoder + bandit state) into ``trainer`` and prompts
+    each organ with its highest-Q arm. Writes ``<run_dir>/test_results.json``, the CSV
+    set (per-slice, summary, failure analysis, per-organ) under ``output_dir``, and, if
+    ``canonical_method_dir`` is given, mirrors CSVs to ``<canon>/metrics/`` plus
+    ``test_results.json`` and evaluation metadata.
+    """
     import torch as _torch
 
     run_dir = Path(trainer.run_dir) if trainer.run_dir else Path(".")
@@ -480,6 +490,7 @@ def _export_per_organ_csv(evaluator: MetricsEvaluator, path: Path) -> None:
 
 
 def format_test_results_wandb(out: Dict[str, Any]) -> Dict[str, float]:
+    """Map :func:`export_test_split_metrics` results to ``test/*`` W&B keys (skips missing values)."""
     log: Dict[str, float] = {}
     if out.get("test_loss") is not None:
         log["test/loss"] = float(out["test_loss"])

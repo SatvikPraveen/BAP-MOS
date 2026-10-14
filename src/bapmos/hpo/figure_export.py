@@ -9,6 +9,8 @@ from typing import Any
 
 @dataclass(frozen=True)
 class SavedFigure:
+    """Paths of the PNG and PDF written for one figure."""
+
     png: Path
     pdf: Path
 

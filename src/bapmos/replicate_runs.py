@@ -42,6 +42,7 @@ def _parse_primary_seed(primary_run_name: str, primary_seed: int | None) -> int:
 
 
 def replicate_index(run_name: str, primary_run_name: str, *, primary_seed: int | None = None) -> int | None:
+    """Replicate index (2 or 3) if ``run_name`` is a replicate of ``primary_run_name``, else None."""
     for idx in REPLICATE_INDICES:
         if run_name == replicate_run_name(
             primary_run_name, idx, primary_seed=primary_seed
@@ -101,6 +102,7 @@ def is_replicate_run_name(
     *,
     primary_seed: int | None = None,
 ) -> bool:
+    """True if ``run_name`` equals one of the replicate names derived from ``primary_run_name``."""
     return run_name in {
         replicate_run_name(primary_run_name, idx, primary_seed=primary_seed)
         for idx in REPLICATE_INDICES

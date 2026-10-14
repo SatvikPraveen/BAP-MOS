@@ -168,6 +168,7 @@ def successful_trials(study: "optuna.Study") -> List["optuna.trial.FrozenTrial"]
 
 
 def best_successful_trial(study: "optuna.Study") -> "optuna.trial.FrozenTrial | None":
+    """Successful trial with the lowest objective (minimisation), or None."""
     complete = successful_trials(study)
     if not complete:
         return None
