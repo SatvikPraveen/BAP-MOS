@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Results collation helpers (inference_output → results/by_seed + combined/).
-# Scheduler-agnostic — source from BAPMOS/scripts/populate_results_*.sh only.
+# Scheduler-agnostic; sourced by scripts/populate_results_*.sh.
 set -euo pipefail
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -27,8 +27,9 @@ populate_results_one() {
   bapmos_results_env
   run_dir="${run_dir#./}"
   if [[ ! -d "${run_dir}" ]]; then
-    echo "ERROR: inference run dir not found: ${run_dir}" >&2
-    return 1
+    # A partial reproduction only exports some methods; skip what is not there.
+    echo "[populate] skip (no export): ${run_dir}" >&2
+    return 0
   fi
   echo "[populate] ingest-run corpus=${corpus} method=${method} run_name=${run_name}"
   python -m bapmos.results.collate_seeds ingest-run \
@@ -131,6 +132,39 @@ populate_prostate_main_ingest() {
         pooled_seed42|pooled_seed43_rep2|pooled_seed44_rep3) collate_name="${run_name}" ;;
       esac
       populate_results_one prostate "${method}" "${collate_name}" "${io}/${method}/${run_name}"
+    done
+  done
+}
+
+# Bladder exports have no test sites: one metrics/summary_metrics.csv per run folder.
+populate_bladder_ingest() {
+  local io="inference_output/bladder/pfus1"
+  bapmos_results_env
+  shopt -s nullglob
+
+  local method_dir method run_dir run_name collate_name summary
+  for method_dir in "${io}"/*/; do
+    method="$(basename "${method_dir}")"
+    for run_dir in "${method_dir}"*/; do
+      run_name="$(basename "${run_dir}")"
+      case "${run_name}" in
+        *_seed42) collate_name="pfus1_seed42" ;;
+        *_seed43_rep2) collate_name="pfus1_seed43_rep2" ;;
+        *_seed44_rep3) collate_name="pfus1_seed44_rep3" ;;
+        *) continue ;;
+      esac
+      summary="${run_dir}metrics/summary_metrics.csv"
+      if [[ ! -f "${summary}" ]]; then
+        echo "[populate] skip (no metrics): ${run_dir}" >&2
+        continue
+      fi
+      echo "[populate] ingest corpus=bladder method=${method} run_name=${collate_name}"
+      python -m bapmos.results.collate_seeds ingest \
+        --corpus bladder \
+        --method "${method}" \
+        --run-name "${collate_name}" \
+        --site pfus1 \
+        --summary "${summary}"
     done
   done
 }

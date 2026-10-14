@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin helpers for the BAPMOS tree (run from BAPMOS/).
+# Thin helpers for BAP-MOS; run from anywhere (the script changes to the repository root).
 # Sets PYTHONPATH=src — no editable / pyproject install required.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,12 +21,14 @@ case "$cmd" in
   test)
     python -m pytest tests -q "$@"
     ;;
-  populate-prostate)
-  populate-results-prostate)
+  populate-prostate|populate-results-prostate)
     bash "${ROOT}/scripts/populate_results_prostate.sh" "$@"
     ;;
+  populate-bladder|populate-results-bladder)
+    bash "${ROOT}/scripts/populate_results_bladder.sh" "$@"
+    ;;
   *)
-    echo "Usage: $0 {preprocess-prostate|preprocess-bladder|preprocess-delineation|test|populate-prostate} [args...]"
+    echo "Usage: $0 {preprocess-prostate|preprocess-bladder|preprocess-delineation|test|populate-prostate|populate-bladder} [args...]"
     exit 1
     ;;
 esac
