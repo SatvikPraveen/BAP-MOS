@@ -24,6 +24,7 @@ def repo_root() -> Path:
 
 
 def resolve_path(path_like: str) -> Path:
+    """Return absolute paths unchanged; resolve relative ones under the checkout root."""
     p = Path(path_like)
     if p.is_absolute():
         return p
@@ -31,6 +32,7 @@ def resolve_path(path_like: str) -> Path:
 
 
 def load_yaml_config(config_path: str) -> dict:
+    """Load a YAML file (relative paths resolved under the checkout root)."""
     path = Path(config_path)
     if not path.is_absolute():
         path = repo_root() / path

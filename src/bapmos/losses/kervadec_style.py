@@ -343,6 +343,8 @@ def kervadec_total_loss(
 
 @dataclass
 class KervadecSchedule:
+    """Weight α(t) on the regional term, moved from ``alpha_start`` to ``alpha_end`` over training."""
+
     alpha_start: float = 1.0
     alpha_end: float = 0.5
     alpha_schedule: str = "linear"
@@ -358,6 +360,7 @@ class DecoderLossConfig:
 
     @classmethod
     def from_training_config(cls, cfg: dict, *, max_epochs: int) -> "DecoderLossConfig":
+        """Read ``training.loss_mode`` and ``training.kervadec`` (defaults: ce_dice, α 1.0 → 0.5 linear)."""
         training = cfg.get("training") or {}
         kervadec_raw = training.get("kervadec") or {}
         return cls(

@@ -31,6 +31,7 @@ def seed_everything(seed: int, *, deterministic: bool = False) -> None:
 
 
 def training_seed_from_env(*, default: int = 42) -> int:
+    """Training seed from ``PI_TRAIN_SEED`` or ``BPI_TRAIN_SEED``, else ``default``."""
     for key in ("PI_TRAIN_SEED", "BPI_TRAIN_SEED"):
         raw = os.environ.get(key, "").strip()
         if raw:
@@ -39,6 +40,7 @@ def training_seed_from_env(*, default: int = 42) -> int:
 
 
 def probe_seed_from_env(*, default: int) -> int:
+    """Bandit val-probe seed from ``PI_PROBE_SEED`` or ``BPI_PROBE_SEED``, else ``default``."""
     for key in ("PI_PROBE_SEED", "BPI_PROBE_SEED"):
         raw = os.environ.get(key, "").strip()
         if raw:
@@ -47,6 +49,7 @@ def probe_seed_from_env(*, default: int) -> int:
 
 
 def kfold_seed_from_env(*, default: int) -> int:
+    """Checkpoint k-fold seed from ``PI_CHECKPOINT_KFOLD_SEED`` or ``BPI_CHECKPOINT_KFOLD_SEED``, else ``default``."""
     for key in ("PI_CHECKPOINT_KFOLD_SEED", "BPI_CHECKPOINT_KFOLD_SEED"):
         raw = os.environ.get(key, "").strip()
         if raw:

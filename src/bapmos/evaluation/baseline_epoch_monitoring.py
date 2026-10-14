@@ -42,6 +42,7 @@ def validation_checkpoint_scores(
     config: dict,
     evaluator_organ_labels: list,
 ) -> Optional[CheckpointScores]:
+    """Checkpoint-objective scores for a filled validation evaluator (None if it holds no slices)."""
     if not evaluator.per_slice_metrics:
         return None
     objective = parse_checkpoint_objective_config(config)
@@ -72,6 +73,7 @@ def per_organ_wandb_dict(
     organ_labels: List[str],
     prefix: str,
 ) -> Dict[str, float]:
+    """Per-organ MSD/HD95/Dice means as ``{prefix}/organ/{Organ}/{metric}_mean`` W&B keys."""
     out: Dict[str, float] = {}
     for organ in organ_labels:
         agg = evaluator.aggregate_metrics(organ_name=organ)
@@ -92,6 +94,7 @@ def per_organ_wandb_dict(
 def csv_metric_cell(
     metrics: Optional[Dict[str, Optional[float]]], key: str
 ) -> Any:
+    """``metrics[key]`` for a CSV cell, or ``""`` when missing."""
     if not metrics:
         return ""
     v = metrics.get(key)
@@ -211,6 +214,7 @@ def build_test_wandb_log(
     evaluator: Optional[MetricsEvaluator] = None,
     organ_labels: Optional[List[str]] = None,
 ) -> Dict[str, float]:
+    """Map test-result keys to ``test/*`` W&B keys, plus per-organ means when an evaluator is given."""
     log: Dict[str, float] = {}
     mapping = {
         "test_loss": "test/loss",

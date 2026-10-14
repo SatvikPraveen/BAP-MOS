@@ -80,6 +80,7 @@ BLADDER_HPO_SUITES = frozenset({"bapmos_bo_sam", "bapmos_bo_medsam"})
 
 
 def datasets_for_suite(hpo_suite: str) -> tuple[str, ...]:
+    """Datasets an HPO suite may run on (bladder → ``pfus1``, prostate → ``pooled``)."""
     if hpo_suite in BLADDER_HPO_SUITES:
         return BLADDER_PFUS1_DATASETS
     if hpo_suite in PROSTATE_HPO_SUITES:
@@ -297,6 +298,7 @@ def enqueue_heuristic_catalog(
     hpo_suite: str = DEFAULT_HPO_SUITE,
     max_trials: int | None = None,
 ) -> int:
+    """Enqueue every heuristic catalog config not already in the study; return count added."""
     added = 0
     for params in heuristic_catalog(hpo_suite=hpo_suite, max_trials=max_trials):
         if _params_already_enqueued(study, params):
@@ -307,6 +309,7 @@ def enqueue_heuristic_catalog(
 
 
 def load_greedy_state(paths: HpoPaths) -> Dict[str, Any]:
+    """Read ``greedy_state.json`` (current centre, last wave, best value); baseline state if absent."""
     path = paths.greedy_state_path()
     if path.is_file():
         return json.loads(path.read_text(encoding="utf-8"))
@@ -318,6 +321,7 @@ def load_greedy_state(paths: HpoPaths) -> Dict[str, Any]:
 
 
 def save_greedy_state(paths: HpoPaths, state: Dict[str, Any]) -> None:
+    """Overwrite ``greedy_state.json`` under the suite's study directory."""
     path = paths.greedy_state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
@@ -579,6 +583,13 @@ def _reload_study(args: argparse.Namespace):
 
 
 def cmd_run(args: argparse.Namespace) -> None:
+    """Worker loop: run up to ``--n-trials`` new successful trials for one dataset.
+
+    Before each trial the worker re-opens the study and stops on budget or saturation
+    (:func:`worker_should_skip`). While the TPE startup catalog is incomplete, the
+    startup guard restricts asks to catalog configs still missing a result. Duplicate
+    parameter vectors are pruned and re-asked up to ``HPO_MAX_DUPLICATE_RETRIES`` times.
+    """
     _assert_prostate_suite_env(args.hpo_suite)
     study, paths = create_study(args.dataset, hpo_suite=args.hpo_suite, storage=args.storage)
     skip, skip_reason = worker_should_skip(
@@ -653,6 +664,7 @@ def cmd_run(args: argparse.Namespace) -> None:
             study, catalog, n_startup=n_startup
         ):
             def startup_missing_keys_fn(study):
+                """Return keys of start-up catalog rows not yet run, or None once the catalog is done."""
                 if startup_phase_complete(study, catalog, n_startup=n_startup):
                     return None
                 missing = startup_missing_catalog_rows(study, catalog)
@@ -781,6 +793,7 @@ def _purge_after_run(args: argparse.Namespace, paths: HpoPaths) -> None:
 
 
 def cmd_purge_trials(args: argparse.Namespace) -> None:
+    """Delete non-contributing (FAIL/PRUNED by default) and duplicate trials from the study DB."""
     from bapmos.hpo.study_purge import (
         DEFAULT_PURGE_STATES,
         purge_noncontributing_trials_for_suite,
@@ -813,6 +826,7 @@ def cmd_worker(args: argparse.Namespace) -> None:
 
 
 def cmd_summary(args: argparse.Namespace) -> None:
+    """Print the best successful trial and its parameters for each dataset."""
     datasets = _resolve_datasets(args.dataset, args.hpo_suite)
     paths = HpoPaths.for_suite(args.hpo_suite)
     for ds in datasets:
@@ -1251,6 +1265,12 @@ def _print_best(study, dataset: str, paths: HpoPaths) -> None:
 
 
 def cmd_export(args: argparse.Namespace) -> None:
+    """Export each dataset's best trial as inner-loop overrides.
+
+    Writes ``<selected_root>/<selected_subdir>/<dataset>.yaml`` (nested reward /
+    prompt_geometry / bandit overrides plus ``selection_meta``) and a ``MANIFEST.json``
+    alongside summarising every exported dataset.
+    """
     datasets = _resolve_datasets(args.dataset, args.hpo_suite)
     paths = HpoPaths.for_suite(args.hpo_suite)
     manifest: Dict[str, Any] = {
@@ -1355,6 +1375,7 @@ def cmd_wait_saturated(args: argparse.Namespace) -> None:
 
 
 def cmd_convergence_report(args: argparse.Namespace) -> None:
+    """Write saturation / GPU-hour reports (one dataset, or all with summary CSV/JSON)."""
     from bapmos.hpo.convergence_report import (
         run_convergence_report,
         run_convergence_report_all,
@@ -1435,6 +1456,7 @@ def cmd_convergence_report(args: argparse.Namespace) -> None:
 
 
 def cmd_coverage_report(args: argparse.Namespace) -> None:
+    """Write search-space coverage reports for each selected dataset."""
     from bapmos.hpo.coverage_report import run_coverage_report
 
     datasets = _resolve_datasets(args.dataset, args.hpo_suite)
@@ -1591,6 +1613,7 @@ def _resolve_datasets(dataset_arg: str, hpo_suite: str) -> List[str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Argument parser with one subcommand per ``cmd_*`` handler."""
     parser = argparse.ArgumentParser(
         description="BAP-MOS outer-loop Bayesian optimization (Optuna TPE per dataset)",
     )
@@ -1950,6 +1973,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> None:
+    """CLI entry point; ``run`` / ``init`` / ``reset-study`` with ``--dataset all`` loop over the suite's datasets."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
