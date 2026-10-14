@@ -28,14 +28,14 @@ from bapmos.train.training_taxonomy import get_baseline_taxonomy_profile
 def _prompt_type(cfg: dict, checkpoint: Path) -> str:
     pt = str(cfg.get("prompt_type") or "").strip().lower()
     if pt in ("box", "points", "point"):
-        return "box" if pt == "point" else pt
+        return "points" if pt == "point" else pt
     try:
         ckpt = torch.load(checkpoint, map_location="cpu", weights_only=False)
     except TypeError:
         ckpt = torch.load(checkpoint, map_location="cpu")
     pt = str(ckpt.get("prompt_type") or "").strip().lower()
     if pt in ("box", "points", "point"):
-        return "box" if pt == "point" else pt
+        return "points" if pt == "point" else pt
     raise ValueError(
         f"Cannot infer prompt_type from config/checkpoint for {checkpoint} "
         "(expected box or points)."
