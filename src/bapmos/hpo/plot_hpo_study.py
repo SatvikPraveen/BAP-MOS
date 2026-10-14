@@ -551,17 +551,15 @@ def plot_optuna_matplotlib_diagnostics(
 
 
 def discover_hpo_suites_with_studies() -> List[str]:
-    """Suite keys with a same-named ``optuna_studies/<suite>/`` directory containing a ``.db``."""
+    """Suite keys whose study folder (``optuna_studies/<studies_subdir>/``) contains a ``.db``."""
     root = repo_root() / "optuna_studies"
     if not root.is_dir():
         return []
-    suites: List[str] = []
-    for child in sorted(root.iterdir()):
-        if child.is_dir() and any(child.glob("*.db")):
-            key = child.name
-            if key in HPO_SUITES:
-                suites.append(key)
-    return suites
+    return [
+        suite
+        for suite, spec in sorted(HPO_SUITES.items())
+        if any((root / spec["studies_subdir"]).glob("*.db"))
+    ]
 
 
 def plot_suite(
