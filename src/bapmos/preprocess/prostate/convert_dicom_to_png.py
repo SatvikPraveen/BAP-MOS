@@ -87,6 +87,8 @@ def dicom_to_uint8(img: np.ndarray) -> np.ndarray:
     if not finite.any():
         return np.zeros(img.shape, dtype=np.uint8)
     vals = img[finite]
+    # Clip to the 1st-99th percentile to suppress outlier pixels, then scale to 0..255;
+    # a near-constant slice maps to mid-grey.
     lo, hi = np.percentile(vals, (1.0, 99.0))
     if hi <= lo + 1e-6:
         return np.full(img.shape, 128, dtype=np.uint8)
@@ -116,6 +118,8 @@ def _to_2d_grayscale(arr: np.ndarray, ds: pydicom.dataset.FileDataset) -> np.nda
         raise ValueError(f"Unsupported pixel_array ndim={arr.ndim}, shape={arr.shape}")
 
     plane = plane.astype(np.float32, copy=False)
+    # MONOCHROME1 means low values display bright; flip within the plane's range so
+    # all slices share the MONOCHROME2 convention before windowing.
     if getattr(ds, "PhotometricInterpretation", "") == "MONOCHROME1":
         pmin = float(np.nanmin(plane))
         pmax = float(np.nanmax(plane))
@@ -146,6 +150,7 @@ def dicom_slice_is_blank_for_training(dcm_path: Path) -> bool:
 
 
 def should_skip_path(path: Path) -> bool:
+    """True for non-``.dcm`` files and RTSTRUCT / RTPLAN files (``RS.*`` / ``RP.*``)."""
     name = path.name.upper()
     if not name.endswith(".DCM"):
         return True
@@ -185,6 +190,7 @@ def convert_one_dicom(
     try:
         plane = _to_2d_grayscale(np.asarray(arr), ds)
         img8 = dicom_to_uint8(plane)
+        # Remove a PNG left over from an earlier run so blank slices never reach training.
         if is_blank_training_slice_uint8(img8):
             if out_path.is_file():
                 try:
@@ -266,6 +272,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Convert ``--input`` DICOMs to PNGs in ``--output``; returns 1 if any file failed."""
     args = _parse_args(argv)
     if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
         sh = logging.StreamHandler()

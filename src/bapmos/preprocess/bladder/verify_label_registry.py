@@ -14,6 +14,7 @@ from bapmos.preprocess.bladder.constants import JSON_LABEL_TO_CLASS_ID, PFUS1_AL
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Check that constants and ``organ_registry`` agree on PFUS1 class IDs and order; 0 on success, 1 on mismatch."""
     del argv  # CLI takes no flags; signature matches other preprocess mains.
     errors: list[str] = []
 

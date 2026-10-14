@@ -13,6 +13,7 @@ _COMMAND_HELP = {
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Dispatch a delineation subcommand; unrecognised arguments are forwarded to its ``main``."""
     p = argparse.ArgumentParser(
         prog="python -m bapmos.preprocess.delineation",
         description="Mask overlays and RTSTRUCT/RTPLAN delineation summaries",

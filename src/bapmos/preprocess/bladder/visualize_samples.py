@@ -43,6 +43,11 @@ def _palette_bgr() -> Dict[int, Tuple[int, int, int]]:
 
 
 def overlay_mask_bgr(image_gray: np.ndarray, mask: np.ndarray, alpha: float) -> np.ndarray:
+    """Alpha-blend a class-coloured layer over a greyscale image; returns uint8 BGR.
+
+    The blend is applied to every pixel, so background (class 0) is also
+    darkened by ``1 - alpha``.
+    """
     base = cv2.cvtColor(image_gray, cv2.COLOR_GRAY2BGR).astype(np.float32)
     pal = _palette_bgr()
     color_layer = np.zeros_like(base)
@@ -73,6 +78,7 @@ def append_legend_column(
     ]
 
     font = cv2.FONT_HERSHEY_SIMPLEX
+    # Scale text with image height (0.38 at ~520 px), clamped to stay legible.
     font_scale = float(np.clip(0.38 * (h / 520.0), 0.32, 0.62))
     thickness = max(1, min(2, int(round(font_scale * 2.2))))
 
@@ -178,6 +184,12 @@ def export_pdfs_for_existing_sample_pngs(directory: Path, *, dpi: int, overwrite
 
 
 def main(argv: List[str] | None = None) -> int:
+    """Render up to ``--n`` overlays from ``--split_file`` into ``--out_dir``.
+
+    Writes ``sample_{i}_{patient}_{stem}.png`` (plus ``.pdf`` with ``--write_pdf``)
+    and ``legend_classes.txt``. With ``--export_pdf_only DIR`` only PDFs are
+    written for existing PNGs.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--split_file",

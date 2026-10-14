@@ -80,6 +80,7 @@ class BaselineTaxonomyProfile:
 
 
 def resolve_training_data_root_path(data_root) -> Path:
+    """Absolute, resolved ``data_root``; relative paths are taken from the project root."""
     p = Path(data_root)
     if not p.is_absolute():
         p = project_root() / p

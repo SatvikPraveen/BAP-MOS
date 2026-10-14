@@ -57,12 +57,14 @@ def _masks_root_for_case(case_id: str) -> Path:
 
 
 def find_rs_rp(dicom_dir: Path) -> Tuple[Optional[Path], Optional[Path]]:
+    """First (sorted) ``RS.*.dcm`` and ``RP.*.dcm`` in ``dicom_dir``, or ``None`` for each missing."""
     rs = sorted(dicom_dir.glob("RS.*.dcm"))
     rp = sorted(dicom_dir.glob("RP.*.dcm"))
     return (rs[0] if rs else None, rp[0] if rp else None)
 
 
 def referenced_series_uids_from_rtstruct(ds: pydicom.dataset.FileDataset) -> List[str]:
+    """SeriesInstanceUIDs referenced via frame of reference -> study -> series sequences."""
     uids: List[str] = []
     seq = getattr(ds, "ReferencedFrameOfReferenceSequence", None)
     if not seq:
@@ -96,6 +98,7 @@ def count_mr_slices_for_series(dicom_dir: Path, series_uid: str) -> int:
 
 
 def contour_counts_by_roi_number(ds: pydicom.dataset.FileDataset) -> Dict[int, int]:
+    """Number of contour items per ``ReferencedROINumber`` in ``ROIContourSequence``."""
     out: Dict[int, int] = {}
     seq = getattr(ds, "ROIContourSequence", None)
     if not seq:
@@ -108,6 +111,7 @@ def contour_counts_by_roi_number(ds: pydicom.dataset.FileDataset) -> Dict[int, i
 
 
 def summarize_rtstruct(path: Path) -> Dict[str, Any]:
+    """Header metadata, referenced series and ROI list (with contour counts, sorted by number) of an RTSTRUCT."""
     ds = pydicom.dcmread(path, stop_before_pixels=True, force=True)
     contour_n = contour_counts_by_roi_number(ds)
     rois: List[Dict[str, Any]] = []
@@ -135,6 +139,7 @@ def summarize_rtstruct(path: Path) -> Dict[str, Any]:
 
 
 def summarize_rtplan(path: Path) -> Dict[str, Any]:
+    """Plan label, referenced RTSTRUCT SOP UIDs and beam / fraction-group counts of an RTPLAN."""
     ds = pydicom.dcmread(path, stop_before_pixels=True, force=True)
     ref_rs: List[str] = []
     for item in getattr(ds, "ReferencedStructureSetSequence", None) or []:
@@ -171,6 +176,7 @@ def canonical_segmentation_organ(roi_name: str) -> Optional[str]:
         return "PTV"
     if n in ("ptv1",):
         return "PTV1"
+    # Check PTV1 before the generic ``ptv`` prefix, which would also match it.
     if "ptv1" in n.replace(" ", ""):
         return "PTV1"
     if n.startswith("ptv"):
@@ -259,6 +265,11 @@ def build_case_report(
     dicom_dir: Optional[Path],
     masks_root: Path,
 ) -> Dict[str, Any]:
+    """Combine RTSTRUCT, RTPLAN, MR slice count and on-disk mask summary for one case.
+
+    Sets ``report["error"]`` and returns early when the DICOM directory or RTSTRUCT
+    is missing. The MR slice count uses only the first referenced series UID.
+    """
     report: Dict[str, Any] = {
         "case_id": case_id,
         "dicom_dir": str(dicom_dir) if dicom_dir else None,
@@ -311,6 +322,7 @@ def build_case_report(
 
 
 def render_text(reports: List[Dict[str, Any]]) -> str:
+    """Plain-text rendering of :func:`build_case_report` results."""
     lines: List[str] = []
     for rep in reports:
         cid = rep["case_id"]
@@ -382,6 +394,7 @@ def render_text(reports: List[Dict[str, Any]]) -> str:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Summarize all default cases and write ``summary.json`` and ``summary.txt`` under ``--out``."""
     p = argparse.ArgumentParser(
         description="Summarize RS/RP DICOM and relate to mask folders."
     )

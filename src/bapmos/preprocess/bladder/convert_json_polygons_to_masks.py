@@ -58,6 +58,11 @@ def _poly_to_pts_int(poly: List[List[float]]) -> np.ndarray:
 def collect_contours_by_class(
     annotations: List[Dict[str, Any]],
 ) -> Tuple[Dict[int, List[np.ndarray]], List[str]]:
+    """Group annotation polygons by ``class_id`` as OpenCV int32 contours.
+
+    Unknown labels and polygons with fewer than 3 vertices are skipped and
+    reported in the returned warning list.
+    """
     by_class: Dict[int, List[np.ndarray]] = {}
     warnings: List[str] = []
     for obj in annotations:
@@ -83,6 +88,11 @@ def rasterize_frame(
     image_shape_hw: Tuple[int, int],
     annotations: List[Dict[str, Any]],
 ) -> Tuple[np.ndarray, List[str]]:
+    """Rasterize one frame's polygons into an ``(H, W)`` uint8 class-id mask (0 = background).
+
+    Classes are filled in ascending ``class_id`` order, so higher IDs win overlaps.
+    Returns ``(mask, warnings)``.
+    """
     h, w = image_shape_hw
     mask = np.zeros((h, w), dtype=np.uint8)
     by_class, warnings = collect_contours_by_class(annotations)
@@ -105,6 +115,7 @@ def preview_lut_pfus1() -> Dict[int, int]:
 
 
 def combined_multiclass_to_preview_u8(combined: np.ndarray) -> np.ndarray:
+    """Map class IDs 0..8 to evenly spaced grey levels for QA previews."""
     lut = preview_lut_pfus1()
     out = np.zeros(combined.shape, dtype=np.uint8)
     for cid, grey in lut.items():
@@ -291,6 +302,12 @@ def write_first_n_preview_pdfs_per_patient(
 
 
 def main(argv: List[str] | None = None) -> int:
+    """Export masks for every ``P*/frame_*.png`` with a matching JSON under ``--raw_root``.
+
+    Writes per-label binary masks, ``combined_masks/*_combined_mask.png``, optional
+    previews, ``label_mapping.json`` and ``export_summary.json`` under ``--masks_root``.
+    Existing combined masks are skipped unless ``--overwrite``.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--raw_root",
