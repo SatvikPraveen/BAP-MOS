@@ -1,0 +1,55 @@
+method,run_name,organ,site,n_seeds,seeds,dice_mean,dice_std,dice_mean_pm_std,msd_mm_mean,msd_mm_std,msd_mm_mean_pm_std,hd95_mm_mean,hd95_mm_std,hd95_mm_mean_pm_std
+bapmos_medsam,pfus1,Anus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_medsam,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_medsam,pfus1,Levator ani muscle,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_medsam,pfus1,Pubis,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_medsam,pfus1,Rectum,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_medsam,pfus1,Urethra,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_medsam,pfus1,Uterus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_medsam,pfus1,Vagina,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_medsam,pfus1,all,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Anus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Levator ani muscle,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Pubis,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Rectum,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Urethra,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Uterus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Vagina,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,all,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Anus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Levator ani muscle,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Pubis,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Rectum,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Urethra,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Uterus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Vagina,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,all,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Anus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Levator ani muscle,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Pubis,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Rectum,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Urethra,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Uterus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Vagina,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,all,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Anus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Levator ani muscle,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Pubis,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Rectum,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Urethra,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Uterus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Vagina,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,all,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Anus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Levator ani muscle,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Pubis,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Rectum,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Urethra,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Uterus,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Vagina,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,all,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>

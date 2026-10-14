@@ -1,0 +1,7 @@
+method,run_name,organ,site,n_seeds,seeds,dice_mean,dice_std,dice_mean_pm_std,msd_mm_mean,msd_mm_std,msd_mm_mean_pm_std,hd95_mm_mean,hd95_mm_std,hd95_mm_mean_pm_std
+bapmos_medsam,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+bapmos_sam,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+box,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+medsam,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+nnunet,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>
+unet,pfus1,Bladder,pfus1,3,"42,43,44",<dice_mean>,<dice_std>,<dice_mean>±<dice_std>,<msd_mm_mean>,<msd_mm_std>,<msd_mm_mean>±<msd_mm_std>,<hd95_mm_mean>,<hd95_mm_std>,<hd95_mm_mean>±<hd95_mm_std>

@@ -1,0 +1,21 @@
+method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
+bapmos_medsam,pooled_seed43_rep2,43,simulation,Bladder,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/simulation/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,simulation,PTV,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/simulation/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,simulation,Rectum,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/simulation/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,simulation,Urethra,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/simulation/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,simulation,all,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/simulation/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case1,Bladder,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case1/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case1,PTV,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case1/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case1,Rectum,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case1/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case1,Urethra,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case1/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case1,all,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case1/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case2,Bladder,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case2/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case2,PTV,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case2/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case2,Rectum,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case2/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case2,Urethra,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case2/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,case2,all,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos_medsam/pooled_seed43_rep2/case2/metrics/summary_metrics.csv
+bapmos_medsam,pooled_seed43_rep2,43,pooled,Bladder,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+bapmos_medsam,pooled_seed43_rep2,43,pooled,PTV,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+bapmos_medsam,pooled_seed43_rep2,43,pooled,Rectum,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+bapmos_medsam,pooled_seed43_rep2,43,pooled,Urethra,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
+bapmos_medsam,pooled_seed43_rep2,43,pooled,all,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,"slice_weighted_pooled valid_boundary n=94 (simulation=24, case1=33, case2=37)"
