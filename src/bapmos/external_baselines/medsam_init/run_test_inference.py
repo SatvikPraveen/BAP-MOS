@@ -38,6 +38,13 @@ def run_medsam_test_export(
     device: str = "cuda",
     force_inference_output: bool = False,
 ) -> None:
+    """Export stratified test-split predictions and panels for a MedSAM-init box checkpoint.
+
+    Rebuilds ``SAMMultiOrganTrainer`` from the run's saved config, re-applies the MedSAM
+    encoder weights, loads ``model_state.mask_decoder`` from ``checkpoint`` and writes
+    per-site results under ``output_dir`` via ``export_stratified_sites``. Refuses
+    non-primary-seed runs unless ``force_inference_output``.
+    """
     checkpoint = resolve_under_project(checkpoint)
     run_dir = checkpoint.parent
     cfg = load_run_config(run_dir, checkpoint)
@@ -86,6 +93,8 @@ def run_medsam_test_export(
 
     @torch.no_grad()
     def predict_fn(image_rgb, mask_multi, fn: str):
+        """Return the 256x256 label map for one test slice, or None if no organ yields a prompt."""
+        # Same box-prompt forward pass as validation; None means the slice has no prompt.
         out = trainer._forward_one(image_rgb, mask_multi, fn, is_train=False)
         if out is None:
             return None
@@ -113,6 +122,7 @@ def run_medsam_test_export(
 
 
 def main() -> None:
+    """CLI entry point for :func:`run_medsam_test_export`."""
     p = argparse.ArgumentParser(
         description=(
             "Export MedSAM-init test split to inference_output/ "

@@ -1,6 +1,6 @@
 """Protocol-constrained nnU-Net trainer (not untouched stock nnU-Net).
 
-Aligned with the external U-Net / BAP-MOS Slurm protocol (optimizer schedule, batch,
+Aligned with the external U-Net / BAP-MOS training protocol (optimizer schedule, batch,
 patience, patient splits, checkpoint objective). Loss remains nnU-Net's stock Dice+CE
 (``DC_and_CE_loss`` family) — **not** Kervadec (reserved for the main BAP-MOS method).
 
@@ -142,6 +142,10 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         return self._checkpoint_objective.metric == "ptv_kfold_msd"
 
     def configure_optimizers(self):
+        """SGD (Nesterov, momentum 0.99, nnU-Net weight decay) at ``initial_lr`` with a flat LR schedule.
+
+        Replaces nnU-Net's default poly decay so the LR matches the BAP-MOS protocol.
+        """
         optimizer = torch.optim.SGD(
             self.network.parameters(),
             self.initial_lr,
@@ -208,6 +212,11 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         )
 
     def on_train_start(self) -> None:
+        """nnU-Net hook: install patient splits, then size epochs to the full cohort.
+
+        Also extends the DDP/NCCL timeout for long rank-0 boundary evaluation and sets
+        W&B epoch axes when ``nnUNet_wandb_enabled`` is on.
+        """
         if self._patient_split_enabled():
             self._install_patient_splits_final()
         super().on_train_start()
@@ -299,6 +308,7 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
             )
 
     def save_checkpoint(self, filename: str) -> None:
+        """Save via nnU-Net, then (rank 0) re-save with best PTV MSD and patience counter appended."""
         super().save_checkpoint(filename)
         if self.local_rank != 0 or self.disable_checkpointing:
             return
@@ -316,6 +326,7 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
             )
 
     def load_checkpoint(self, filename_or_checkpoint: Union[dict, str]) -> None:
+        """Load a checkpoint path or dict, restoring the best PTV MSD and resetting patience."""
         # Parent nnUNetTrainer.load_checkpoint only binds local `checkpoint` when
         # given a filesystem path. Always call super() with a path.
         if isinstance(filename_or_checkpoint, str):
@@ -345,7 +356,7 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         """All ranks must agree to stop — only rank 0 has PTV k-fold scores.
 
         Without this, rank 0 early-stops while other ranks keep training, then DDP
-        hangs until NCCL timeout and Slurm records FAILED after a successful run.
+        hangs until NCCL timeout and the job is reported FAILED after a successful run.
         """
         if not (torch.distributed.is_available() and torch.distributed.is_initialized()):
             return local_stop
@@ -356,6 +367,13 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         return bool(int(flag.item()))
 
     def run_training(self) -> None:
+        """nnU-Net training loop with BAP-MOS checkpoint selection and early stopping.
+
+        In ``ptv_kfold_msd`` mode an epoch improves when the k-fold MSD beats the best
+        by ``min_delta``; otherwise the EMA foreground Dice must increase. Patience is
+        frozen while no k-fold score is available, and the stop decision is broadcast
+        so all DDP ranks exit together.
+        """
         self.on_train_start()
         self._restore_best_ptv_msd_if_needed()
         best_score: Optional[float] = self._bapmos_best_ptv_msd
@@ -438,6 +456,7 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         self.on_train_end()
 
     def on_epoch_end(self) -> None:
+        """nnU-Net hook: log boundary metrics, then pick ``checkpoint_best`` by PTV k-fold MSD or stock EMA Dice."""
         from bapmos.external_baselines.nnunet2d.epoch_boundary_wandb import (
             maybe_log_boundary_metrics,
         )
@@ -459,6 +478,8 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
             dataset_name=dataset_name,
         )
 
+        # The PTV path re-implements the parent's epoch-end bookkeeping without the EMA-Dice
+        # best-checkpoint logic, so the parent hook must not run as well.
         if self._ptv_checkpoint_mode():
             self._on_epoch_end_ptv_checkpoint()
             return
@@ -521,7 +542,7 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
     def perform_inference_on_split_keys(self, keys: List[str], folder_name: str) -> Path:
         """Sliding-window inference; PNG label maps go to a temp dir (not the run folder).
 
-        Writing under ``output_folder/boundary_*`` filled home quota on PFUS1 (~12k
+        Writing under ``output_folder/boundary_*`` exhausted disk quota on PFUS1 (~12k
         train+val PNGs/epoch). Callers must delete the returned directory when done
         (see ``epoch_boundary_wandb`` / ``NNUNET_KEEP_VALIDATION_DIR``).
         """

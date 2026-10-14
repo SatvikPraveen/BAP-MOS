@@ -34,6 +34,7 @@ from .dataset_single_organ import SingleOrganDataset
 
 
 def seed_everything(seed: int, deterministic: bool = False):
+    """Seed Python, NumPy and torch (CPU and CUDA); optionally force deterministic cuDNN."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -44,12 +45,14 @@ def seed_everything(seed: int, deterministic: bool = False):
 
 
 def seed_worker(worker_id):
+    """DataLoader ``worker_init_fn``: derive NumPy/``random`` seeds from the worker's torch seed."""
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
 
 def stable_rng_from_id(sample_id: str, base_seed: int):
+    """Return a NumPy generator seeded by an FNV-1a hash of ``sample_id`` + ``base_seed``."""
     h = 2166136261
     for c in (sample_id + str(base_seed)):
         h ^= ord(c)
@@ -64,6 +67,10 @@ def _box_jitter_px(cfg: dict) -> int:
 
 
 def multi_class_dice_from_logits(logits, gt_multi, num_classes: int):
+    """Mean Dice of the argmax prediction over foreground classes present in pred or GT.
+
+    Classes absent from both are skipped; returns 0.0 when none are present.
+    """
     probs = torch.softmax(logits, dim=1)
     pred_classes = torch.argmax(probs, dim=1, keepdim=True)
     dices = []
@@ -78,6 +85,12 @@ def multi_class_dice_from_logits(logits, gt_multi, num_classes: int):
 
 
 class SAMSingleOrganBoxTrainer:
+    """SAM ViT-B decoder-only trainer for one organ as a binary (background/organ) task.
+
+    Each slice is prompted with the organ's GT bounding box (jittered at train time).
+    Image and prompt encoders are frozen; the mask decoder is trained with AdamW
+    (weight_decay 1e-4) and cosine annealing to ``max_epochs``. The best checkpoint minimises validation MSD for that organ.
+    """
     def __init__(self, config):
         self.cfg = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -120,6 +133,7 @@ class SAMSingleOrganBoxTrainer:
         self._train_generator_ref = None
 
     def loss_fn(self, logits, gt_bin):
+        """Cross-entropy plus mean (1 - soft Dice) over foreground classes on 256x256 logits."""
         gt_flat = gt_bin.squeeze(1).long()
         ce_loss = nn.functional.cross_entropy(logits, gt_flat, reduction="mean")
         probs = torch.softmax(logits, dim=1)
@@ -191,6 +205,7 @@ class SAMSingleOrganBoxTrainer:
         box = compute_bounding_box(organ_u8)
         if box is None:
             return None
+        # Per-slice, per-epoch RNG; jitter is applied only in training, so eval boxes are the tight GT box.
         rng = stable_rng_from_id(str(sample_id), self.cfg["seed"] + self.current_epoch * 1000)
         jitter_px = _box_jitter_px(self.cfg)
         if is_train and jitter_px > 0:
@@ -225,6 +240,7 @@ class SAMSingleOrganBoxTrainer:
         )
         logits = torch.zeros(1, 2, 256, 256, device=self.device, dtype=torch.float32)
         logits[0, 1, :, :] = low_res_mask[0, 0]
+        # Background logit = logit(1 - organ prob), so the 2-class softmax matches the decoder's sigmoid.
         organ_probs = torch.sigmoid(logits[:, 1:, :, :])
         organ_union_prob = organ_probs.max(dim=1, keepdim=True)[0]
         background_prob = 1.0 - organ_union_prob
@@ -232,6 +248,11 @@ class SAMSingleOrganBoxTrainer:
         return logits, gt
 
     def run_epoch(self, loader, train: bool):
+        """Run one train or no-grad evaluation pass over ``loader``.
+
+        Slices without the organ are skipped. Returns ``(mean_loss, mean_dice, summary)``,
+        where ``summary`` is the validation boundary summary (``None`` when training).
+        """
         if train:
             self.model.train()
         else:
@@ -288,6 +309,11 @@ class SAMSingleOrganBoxTrainer:
         return avg_loss, avg_dice, None
 
     def save_checkpoint(self, path: Path, val_msd: Optional[float] = None):
+        """Write a ``format_version=2`` epoch-boundary checkpoint to ``path``.
+
+        Includes decoder weights, optimizer/scheduler and RNG state, organ name and
+        source class id, so the run can be resumed or evaluated as a single-organ model.
+        """
         rng_bundle = {
             "torch": torch.get_rng_state(),
             "random": random.getstate(),
@@ -319,6 +345,12 @@ class SAMSingleOrganBoxTrainer:
         torch.save(ckpt, path)
 
     def train_loop(self, train_loader, val_loader):
+        """Train with per-epoch validation, MSD-based checkpointing and early stopping.
+
+        Writes ``last_checkpoint.pth`` every epoch and ``best_checkpoint.pth`` when
+        validation MSD improves by more than ``val_msd_min_delta``; appends to
+        ``run_dir/metrics.csv`` and logs to wandb.
+        """
         run_dir = Path(self.cfg["run_dir"])
         run_dir.mkdir(parents=True, exist_ok=True)
         csv_path = run_dir / "metrics.csv"
@@ -399,6 +431,10 @@ class SAMSingleOrganBoxTrainer:
             self.scheduler.step()
 
     def evaluate_test_once(self, test_loader):
+        """Load ``best_checkpoint.pth``, evaluate the test loader and write ``run_dir/test_results.json``.
+
+        Optionally renders qualitative test panels; returns the metrics dict.
+        """
         run_dir = Path(self.cfg["run_dir"])
         best_path = run_dir / "best_checkpoint.pth"
         if not best_path.exists():
@@ -446,6 +482,11 @@ class SAMSingleOrganBoxTrainer:
 
 
 def main():
+    """CLI entry point: train (or resume) a single-organ SAM decoder with box prompts.
+
+    Writes ``config.json``, checkpoints and ``metrics.csv`` under ``<run_root>/<run_name>/``
+    and evaluates the test split afterwards unless skipped.
+    """
     root = project_root()
     p = argparse.ArgumentParser()
     p.add_argument("--organ", type=str, required=True, help="Organ key for this dataset taxonomy")

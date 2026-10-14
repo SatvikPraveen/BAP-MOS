@@ -1029,6 +1029,11 @@ def process_batch(runs_dir: Path, output_base: Path, device: str, splits: list):
 
 
 def main():
+    """CLI entry point: visualize one checkpoint, or every checkpoint under ``--runs_dir`` with ``--batch``.
+
+    Single mode writes to ``<output_base>/<phase>/<experiment>/`` inferred from a
+    ``.../Optimization/<phase>/<run>/`` checkpoint path. Returns a process exit code.
+    """
     parser = argparse.ArgumentParser(description='Generate comprehensive visualizations for optimization models')
     parser.add_argument("--checkpoint", type=str, help="Path to best_checkpoint.pth (single mode)")
     parser.add_argument("--batch", action="store_true", help="Process all checkpoints in runs/Optimization/")
@@ -1051,6 +1056,7 @@ def main():
     if "Optimization" in parts:
         opt_idx = parts.index("Optimization")
         phase = parts[opt_idx + 1]
+        # Drop the ``_<YYYYMMDD_HHMMSS>`` timestamp suffix from the run name
         experiment = parts[opt_idx + 2].split('_2026')[0]
         output_dir = Path(args.output_base) / phase / experiment
     else:

@@ -157,7 +157,8 @@ class UCB1Bandit:
                 else:
                     selected_arm = best_arms[0]
         
-        # Update state
+        # Update state. N_a(t) and t are incremented at selection time, before the
+        # block's reward arrives, so Q(a) may lag N_a(t) by one pull.
         self.current_arm = selected_arm
         self.total_pulls += 1
         self.arm_counts[selected_arm] += 1

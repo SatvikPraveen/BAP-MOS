@@ -67,6 +67,7 @@ from .dataset_multi_organ import (
 # Utils
 # -----------------------------
 def seed_everything(seed: int, deterministic: bool = False):
+    """Seed Python, NumPy and torch (CPU and CUDA); optionally force deterministic cuDNN."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -82,6 +83,11 @@ def seed_worker(worker_id):
     random.seed(worker_seed)
 
 def stable_rng_from_id(sample_id: str, base_seed: int):
+    """Return a NumPy generator seeded by an FNV-1a hash of ``sample_id`` + ``base_seed``.
+
+    Gives prompt sampling that is reproducible per slice, independent of loader order
+    and of ``PYTHONHASHSEED``.
+    """
     # stable hash (FNV-1a)
     h = 2166136261
     for c in (sample_id + str(base_seed)):
@@ -125,6 +131,14 @@ def multi_class_dice_from_logits(logits, gt_multi, num_classes=5):
 # Trainer
 # -----------------------------
 class SAMMultiOrganTrainer:
+    """SAM ViT-B decoder-only multi-organ trainer with GT-derived point prompts per present organ.
+
+    Each organ is prompted with positive points inside it plus negatives from a ring
+    around it. The image encoder and prompt encoder are frozen; only the mask decoder is
+    optimised with AdamW (weight_decay 1e-4), a flat LR by default (cosine annealing when
+    ``flat_lr`` is False). The best checkpoint minimises the configured validation
+    boundary objective (default organ-balanced MSD).
+    """
     def __init__(self, config):
         self.cfg = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -245,6 +259,7 @@ class SAMMultiOrganTrainer:
         pixel_std = torch.tensor([58.395, 57.12, 57.375], device=self.device).view(3, 1, 1)
         x = (x - pixel_mean) / pixel_std
 
+        # SAM convention: longest side resized to 1024, then zero-pad bottom/right to 1024x1024.
         h, w = x.shape[-2:]
         padh = self.model.image_encoder.img_size - h
         padw = self.model.image_encoder.img_size - w
@@ -254,6 +269,8 @@ class SAMMultiOrganTrainer:
 
     def _prepare_mask(self, mask_multi):
         """Resize multi-class mask to 256x256."""
+        # Direct nearest-neighbour resize to the decoder's 256x256 low-res grid (aspect ratio
+        # not preserved), so loss is computed at low-res resolution.
         mask_resized = cv2.resize(
             mask_multi.astype(np.float32), 
             (256, 256), 
@@ -266,6 +283,7 @@ class SAMMultiOrganTrainer:
     def _points_prompt(self, mask_multi, original_size, sample_id, is_train: bool):
         """Per-organ positive + ring-negative point prompts from GT."""
         base = self.cfg["seed"]
+        # Train prompts are re-drawn every epoch; eval prompts depend only on (sample_id, seed).
         epoch_offset = (self.current_epoch * 1000) if is_train else 0
         rng = stable_rng_from_id(sample_id, base + epoch_offset)
 
@@ -312,6 +330,7 @@ class SAMMultiOrganTrainer:
         organ_masks = []
         for i in range(num_organs):
             point_set = point_sets[i]
+            # Points are in original-image [x, y]; map them into the resized 1024 frame.
             pts_t = self.transform.apply_coords(point_set["points"], original_size)
             pts_t = torch.as_tensor(pts_t, device=self.device, dtype=torch.float32).unsqueeze(0)
             lab_t = torch.as_tensor(point_set["labels"], device=self.device, dtype=torch.int32).unsqueeze(0)
@@ -336,6 +355,9 @@ class SAMMultiOrganTrainer:
             class_id = self._taxonomy.organ_to_class[organ_name]
             logits[0, class_id, :, :] = organ_masks_stacked[idx, :, :]
 
+        # Each organ is decoded independently (sigmoid logit); the background channel is the
+        # logit of 1 - max organ probability so softmax/argmax over classes is well defined.
+        # Absent organs keep logit 0.
         organ_probs = torch.sigmoid(logits[:, 1:, :, :])
         organ_union_prob = organ_probs.max(dim=1, keepdim=True)[0]
         background_prob = 1.0 - organ_union_prob
@@ -343,6 +365,13 @@ class SAMMultiOrganTrainer:
         return logits, gt
 
     def run_epoch(self, loader, train: bool, return_evaluator: bool = False):
+        """Run one pass over ``loader`` (train step per slice, or no-grad evaluation).
+
+        Slices with an empty mask, or with no promptable organ, are skipped. Returns
+        ``(mean_loss, mean_dice, summary)`` where ``summary`` is the organ-balanced validation
+        summary (``None`` when training); with ``return_evaluator`` the ``MetricsEvaluator``
+        is appended as a fourth element.
+        """
         if train:
             self.model.train()
         else:
@@ -420,6 +449,12 @@ class SAMMultiOrganTrainer:
         return (avg_loss, avg_dice, None, None) if return_evaluator else (avg_loss, avg_dice, None)
 
     def save_checkpoint(self, path: Path, val_msd: Optional[float] = None):
+        """Write a ``format_version=2`` epoch-boundary checkpoint to ``path``.
+
+        Stores the mask-decoder weights, optimizer/scheduler state, best tracked
+        ``val_msd``, patience counter, config and all RNG states (including the train
+        loader generator when set) so ``resume_from`` can continue exactly.
+        """
         rng_bundle = {
             "torch": torch.get_rng_state(),
             "random": random.getstate(),
@@ -450,6 +485,13 @@ class SAMMultiOrganTrainer:
         torch.save(ckpt, path)
 
     def train_loop(self, train_loader, val_loader):
+        """Train for up to ``max_epochs`` with validation-based checkpointing and early stopping.
+
+        Each epoch writes ``last_checkpoint.pth``, updates ``best_checkpoint.pth`` when the
+        validation objective improves by more than ``min_delta``, appends a row to
+        ``run_dir/metrics.csv`` and logs to wandb. Stops after ``patience`` epochs without
+        improvement.
+        """
         run_dir = Path(self.cfg["run_dir"])
         run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -688,6 +730,12 @@ class SAMMultiOrganTrainer:
 # Main
 # -----------------------------
 def main():
+    """CLI entry point: train (or resume) the multi-organ SAM decoder baseline with per-organ point prompts.
+
+    Writes ``config.json``, checkpoints and ``metrics.csv`` under
+    ``<run_root>/<run_name>/``; runs the test evaluation afterwards unless skipped or the
+    dataset has no global test split.
+    """
     root = project_root()
     parser = argparse.ArgumentParser()
     parser.add_argument(
