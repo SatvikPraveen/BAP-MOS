@@ -8,8 +8,7 @@
 # (bare names like ``tpe`` / ``random`` are also accepted and normalized).
 # Production run dirs are isolated per method:
 #   runs/prostate/bapmos/inner_loop/{tpe,random,greedy,heuristic}/pooled_seed*
-# Placeholder selected/ (generation: 0) is refused unless
-# BAPMOS_ALLOW_PLACEHOLDER_SELECTED=1.
+# The committed selected/ files hold the parameters exported from the paper's searches.
 #
 # Advanced: --config loads this file as-is and does NOT merge selected/.
 

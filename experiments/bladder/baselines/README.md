@@ -1,19 +1,18 @@
-# Bladder baselines — UNet / nnU-Net / SAM-box / MedSAM
+# Bladder baselines
 
-Mirror of the prostate main-paper baselines, using `configs/bladder/common.yaml`
-(Bladder MSD objective) and `data/bladder/pfus1/`.
+U-Net, nnU-Net, SAM box and MedSAM on PFUS1. These are additional experiments, not reported in
+the paper; the paper's PFUS1 table has BAP-MOS (MedSAM) and the FPN result quoted from García et
+al. (2024).
 
-**Loss:** all of these use regional CE+Dice (or nnU-Net's own Dice+CE).
-**Kervadec is not used** on baselines — only on the main BAP-MOS method path.
+All four use the prostate trainers with `--data_root data/bladder/pfus1`, CE + Dice loss
+(nnU-Net: its own Dice + CE), checkpointing on fold-balanced validation MSD of the `Bladder`
+organ, and three seeds (42, 43, 44).
 
-Method-specific notes and CLIs: see `unet/`, `nnunet/`, `sam_box/`, `medsam/`
-in this directory (and the prostate counterparts under
-`experiments/prostate/baselines/` for longer CLI examples).
+| Folder | Trainer |
+|--------|---------|
+| `unet/` | `bapmos.external_baselines.unet.train_multiclass` |
+| `medsam/` | `bapmos.external_baselines.medsam_init.train_decoder_boxes` |
+| `sam_box/` | `bapmos.multiorgan.train_sam_multiorgan_decoder_box` |
+| `nnunet/` | nnU-Net v2 with `nnUNetTrainerBapMosProtocol` |
 
-**MedSAM-init** (`medsam/`): not frozen MedSAM — MedSAM encoder overlay + decoder-only
-box fine-tuning. Run `python -m bapmos.external_baselines.medsam_init.verify_weights`
-before first training to confirm weight overlap.
-
-Entry modules: `bapmos.external_baselines.*` and `bapmos.multiorgan.*`.
-
-Three seeds: 42 / 43 / 44 — see `docs/SEEDS.md` and `docs/EXPERIMENT_LADDER.md`.
+Commands: [`docs/RUNNING.md`](../../../docs/RUNNING.md#baselines-additional-experiments).

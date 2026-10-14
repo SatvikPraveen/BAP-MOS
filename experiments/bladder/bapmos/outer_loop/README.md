@@ -1,25 +1,35 @@
-# BAP-MOS outer loop on PFUS1 — validation Bladder MSD (search)
+# BAP-MOS outer loop (PFUS1)
 
-Objective: fold-balanced validation **Bladder** MSD (`ptv_kfold_msd`, `objective_organ: Bladder`).
-Per-trial schedule: **max_epochs 15 / patience 4**, `loss_mode: kervadec`.
+TPE search over the five BAP-MOS hyperparameters, scored by fold-balanced validation MSD on the
+`Bladder` organ. Each trial trains for at most 15 epochs (patience 4). The bandit warm-up is
+shorter than in the inner loop: 5 blocks per arm and 3 pulls before UCB (inner loop: 10 and 5).
 
-Suite and search configuration for PFUS1 bladder are defined under `src/bapmos/hpo/`
-and `experiments/bladder/bapmos/`. See `docs/SEARCH_METHODS.md` and `docs/EXPERIMENT_LADDER.md`.
+| Suite (`--hpo-suite`) | Config | Exports to |
+|-----------------------|--------|------------|
+| `bapmos_bo_medsam` | `medsam/version.yaml` | `../inner_loop/medsam/selected/pfus1.yaml` |
+| `bapmos_bo_sam` | `sam/version.yaml` | `../inner_loop/sam/selected/pfus1.yaml` |
 
-```text
-outer_loop/
-  sam/version.yaml      # bapmos_bo_sam / bapmos_sam_outer_loop
-  medsam/version.yaml   # bapmos_bo_medsam / bapmos_medsam_outer_loop
-inner_loop/
-  sam/version.yaml + selected/pfus1.yaml
-  medsam/version.yaml + selected/pfus1.yaml
-```
-
-Prostate search ablations (`tpe` / `random` / `greedy` / `heuristic`) live under
-`experiments/prostate/bapmos/outer_loop/`. Bladder currently uses the **main BAP-MOS
-protocol only** (no full search-method ablation family in this public tree).
+The search runs on the patient subset `splits_hpo_tpe_patient_seed4242_p20`. Build it first:
 
 ```bash
-python -m bapmos.hpo.study_runner --help
-# Suites: bapmos_bo_sam / bapmos_bo_medsam (see src/bapmos/hpo/paths.py)
+python -m bapmos.preprocess.bladder.create_hpo_splits --data_root data/bladder/pfus1
 ```
+
+Then create the study and run the trials:
+
+```bash
+python -m bapmos.hpo.study_runner init --hpo-suite bapmos_bo_medsam --dataset pfus1
+HPO_SEQUENTIAL=1 python -m bapmos.hpo.study_runner run \
+  --hpo-suite bapmos_bo_medsam --dataset pfus1 --n-trials 100
+```
+
+The committed `selected/` files already hold the paper's exported values. Export your own
+study only if you want to replace them:
+
+```bash
+python -m bapmos.hpo.study_runner export --hpo-suite bapmos_bo_medsam --dataset pfus1
+```
+
+Use `bapmos_bo_sam` for the SAM backbone. Details:
+[`docs/RUNNING.md`](../../../../docs/RUNNING.md#outer-loop-optional-1),
+[`docs/SEARCH_METHODS.md`](../../../../docs/SEARCH_METHODS.md).

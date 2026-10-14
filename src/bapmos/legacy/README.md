@@ -4,11 +4,8 @@ Historical trainers and helpers for prompt/policy ablations under
 `experiments/*/legacy/`. **Not required** to reproduce main BAP-MOS results
 (`experiments/*/bapmos/` + `experiments/*/baselines/`).
 
-Prefer imports via `bapmos.legacy.*`. Root-level package shims (`bapmos.optimization`,
-`singleorgan`, `ablations`, `pfus1_advanced`) alias the same modules via
-`bapmos._legacy_aliases`.
-
-W&B entity (legacy trainers / single-organ) comes from `--wandb_entity` or
-`WANDB_ENTITY` only — never a hardcoded org.
+The legacy *trainers* are optional: they are needed only for the fixed-schedule and policy
+experiments. `bapmos.legacy.optimization.metrics` is not optional: the main evaluation path
+(validation and checkpoint metrics in `bapmos.metrics`) imports its `MetricsEvaluator`.
 
 See `experiments/prostate/legacy/README.md` for the legacy protocol note.
