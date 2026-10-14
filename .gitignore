@@ -1,7 +1,7 @@
 # BAPMOS — publishable tree ignores local/runtime artifacts.
 # Keep: src/, configs/, experiments/, docs/ (except MIGRATION.md), tests/,
 #       scripts/{bapmos.sh,populate_*.sh,_populate_*.sh}, requirements*.txt,
-#       results/ (collated CSVs), data/*/README.md, models/**/.gitkeep
+#       results/README.md, results/example/ (placeholder CSVs), data/*/README.md, models/**/.gitkeep
 
 # --- Internal-only docs (not for public readers) ---
 docs/MIGRATION.md
@@ -69,7 +69,9 @@ data/prostate/**
 data/bladder/**
 !data/bladder/README.md
 
-# --- Results: ship by_seed/ + combined/*_mean_std.csv; ignore scratch/QA ---
+# --- Results: tables written by a run stay local; only the placeholder examples are shipped ---
+/results/**/*.csv
+!/results/example/**/*.csv
 results/**/_tmp_*/
 results/**/_tmp_*
 results/**/*audit*
