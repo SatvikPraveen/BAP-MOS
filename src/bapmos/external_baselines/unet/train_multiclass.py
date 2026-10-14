@@ -24,7 +24,6 @@ import argparse
 import copy
 import csv
 import json
-import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -33,7 +32,6 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import segmentation_models_pytorch as smp
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import wandb
 from torch.utils.data import DataLoader

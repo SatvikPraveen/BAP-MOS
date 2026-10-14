@@ -12,7 +12,7 @@ This module does **not** hook into ``MultiOrganDataset`` or prostate-case config
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np

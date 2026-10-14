@@ -5,7 +5,6 @@ Reads combined multiclass masks and keeps only the requested organ class as labe
 all other pixels (including other organs) become 0.
 """
 
-from pathlib import Path
 from typing import Optional
 
 import numpy as np

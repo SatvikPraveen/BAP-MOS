@@ -36,7 +36,7 @@ from ..data.organ_registry import (
     REAL_CLINICAL_ORGAN_KEYS,
     REAL_CLINICAL_ORGAN_TO_CLASS,
 )
-from ..paths import case_real_data_dir, dataset_bundle_tag, project_root, resolve_model_checkpoint, resolve_under_project
+from ..paths import case_real_data_dir, dataset_bundle_tag, project_root, resolve_model_checkpoint
 from .dataset_multi_organ import (
     MultiOrganDataset,
     sample_per_organ_points_with_negatives,

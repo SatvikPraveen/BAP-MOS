@@ -31,7 +31,6 @@ Usage:
     python -m bapmos.legacy.optimization.generate_visualizations --batch
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -65,7 +64,7 @@ from bapmos.organ_registry import (
     SIMULATION_ORGAN_TO_CLASS,
     SIMULATION_THREE_ORGANS,
 )
-from bapmos.paths import project_root, resolve_model_checkpoint, resolve_under_project
+from bapmos.paths import project_root, resolve_model_checkpoint
 from bapmos.pdf_export import PDF_EXPORT_DPI
 
 _SIM_FG_CLASS_IDS = [o.class_id for o in SIMULATION_THREE_ORGANS]

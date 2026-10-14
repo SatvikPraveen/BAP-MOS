@@ -8,7 +8,6 @@ Run from repo root::
 
 from __future__ import annotations
 
-import sys
 
 from bapmos.data.organ_registry import PFUS1_EIGHT_ORGANS, PFUS1_ORGAN_TO_CLASS
 from bapmos.preprocess.bladder.constants import JSON_LABEL_TO_CLASS_ID, PFUS1_ALL_LABELS

@@ -48,7 +48,7 @@ from bapmos.multiorgan.dataset_multi_organ import (
     multi_organ_collate_fn,
     sample_per_organ_points_with_negatives,
 )
-from bapmos.losses.kervadec_style import BoundaryDistMapCache, DecoderLossComputer, DecoderLossConfig
+from bapmos.losses.kervadec_style import DecoderLossComputer, DecoderLossConfig
 from bapmos.paths import (
     dataset_bundle_tag,
     project_root,

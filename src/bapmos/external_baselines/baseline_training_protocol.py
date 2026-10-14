@@ -10,11 +10,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-import torch
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
-from bapmos.losses.loss_policy import (
+# Re-exported under the baseline-facing names used by the trainers and tests.
+from bapmos.losses.loss_policy import (  # noqa: F401
     NON_METHOD_LOSS_MODE as EXTERNAL_BASELINE_LOSS_MODE,
     force_non_method_ce_dice_loss as force_external_baseline_ce_dice_loss,
 )

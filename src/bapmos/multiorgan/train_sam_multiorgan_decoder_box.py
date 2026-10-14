@@ -54,7 +54,7 @@ from ..external_baselines.baseline_training_protocol import (
     log_epoch_wandb,
     make_constant_lr_scheduler,
 )
-from ..optimization.metrics import MetricsEvaluator
+from bapmos.legacy.optimization.metrics import MetricsEvaluator
 from ..losses.kervadec_style import BoundaryDistMapCache, DecoderLossComputer, DecoderLossConfig
 from ..paths import (
     dataset_bundle_tag,

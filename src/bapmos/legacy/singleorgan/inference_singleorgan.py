@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from bapmos.multiorgan.dataset_multi_organ import compute_bounding_box
-from bapmos.paths import resolve_model_checkpoint, resolve_training_data_root, resolve_under_project
+from bapmos.paths import resolve_model_checkpoint, resolve_training_data_root
 from .dataset_single_organ import SingleOrganDataset
 
 

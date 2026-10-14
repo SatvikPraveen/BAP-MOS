@@ -14,7 +14,7 @@ Example: box_weight=1, point_weight=1, both_weight=1
 
 import hashlib
 import numpy as np
-from typing import Dict, List
+from typing import Dict
 
 
 class ThreeWaySampler:

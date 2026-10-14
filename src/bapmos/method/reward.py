@@ -21,7 +21,6 @@ import numpy as np
 
 from bapmos.method.curriculum_reward import (
     compute_gamma,
-    curriculum_reward,
     rewards_from_validation_msd as _curriculum_rewards,
     tau_at_epoch,
 )

@@ -8,7 +8,7 @@ higher IDs overwrite overlaps (reproducible; document in docs/manifests).
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, FrozenSet, List, Tuple
+from typing import Dict, FrozenSet, Tuple
 
 # JSON strings exactly as in dataset annotations (see ``data/bladder/pfus1*`` READMEs).
 # ``class_id`` 1..8; 0 = background in combined masks.

@@ -13,8 +13,6 @@ Handles empty masks appropriately.
 """
 
 import numpy as np
-from scipy.ndimage import distance_transform_edt
-from scipy.spatial.distance import directed_hausdorff
 from typing import Dict, Tuple, Optional
 import cv2
 

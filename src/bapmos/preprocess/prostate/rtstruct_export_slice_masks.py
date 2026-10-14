@@ -41,7 +41,6 @@ import json
 import logging
 import re
 import shutil
-import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
