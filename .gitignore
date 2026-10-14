@@ -1,14 +1,7 @@
-# BAPMOS — publishable tree ignores local/runtime artifacts.
-# Keep: src/, configs/, experiments/, docs/ (except MIGRATION.md), tests/,
+# BAP-MOS: ignore local and runtime artifacts.
+# Tracked: src/, configs/, experiments/, docs/, tests/,
 #       scripts/{bapmos.sh,populate_*.sh,_populate_*.sh}, requirements*.txt,
 #       results/README.md, results/example/ (placeholder CSVs), data/*/README.md, models/**/.gitkeep
-
-# --- Internal-only docs (not for public readers) ---
-docs/MIGRATION.md
-docs/REPO_MAP.md
-
-# --- Private cluster execution harness (not shipped) ---
-scripts/BAPMOS_run/
 
 # --- Python ---
 __pycache__/

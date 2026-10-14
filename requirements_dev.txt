@@ -1,4 +1,4 @@
-# BAPMOS — optional development stack
+# BAP-MOS: optional development stack
 #
 # Install core first, then::
 #
