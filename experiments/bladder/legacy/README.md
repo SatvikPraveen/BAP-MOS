@@ -1,22 +1,28 @@
-# Legacy prompt ablations (bladder PFUS1)
+# Box-only and point-only prompts (PFUS1)
 
-> **Historical only.** Earlier prompt comparisons — **not** the final BAP-MOS protocol
-> and **not required** for main paper method tables. These runs may be useful for
-> historical comparison, but they **do not appear in any main paper tables.**
-> For the final method see `../bapmos/` and `docs/INNER_OUTER_LOOP.md`.
+Additional experiments, not reported in the paper. They follow the earlier protocol described in
+[`experiments/prostate/legacy/README.md`](../../prostate/legacy/README.md): CE + Dice loss and a
+fixed 20 px negative-point ring.
 
-## What is shipped here
+| Folder | Trainer | Run folder |
+|--------|---------|------------|
+| `box/` | `bapmos.multiorgan.train_sam_multiorgan_decoder_box` | `runs/bladder/legacy/box/` |
+| `point/` | `bapmos.multiorgan.train_sam_multiorgan_decoder_points` | `runs/bladder/legacy/point/` |
 
-1. `box/` — box-only prompt baseline
-2. `point/` — point-only prompt baseline
+`box/` is also the bladder SAM box baseline; its command is in
+[`../baselines/sam_box/README.md`](../baselines/sam_box/README.md). Point only:
 
-Full protocol note (negated MSD reward, fixed ring, CE+Dice — never Kervadec):
-**`experiments/prostate/legacy/README.md`**. Loss is enforced in
-`bapmos.legacy.optimization.trainer` (non-method path).
+```bash
+python -m bapmos.multiorgan.train_sam_multiorgan_decoder_points \
+  --data_root data/bladder/pfus1 \
+  --run_root runs/bladder/legacy/point --run_name point_pfus1_seed42 --seed 42 \
+  --max_epochs 100 --patience 20 --batch_size 128 \
+  --checkpoint-objective-metric ptv_kfold_msd --checkpoint-objective-organ Bladder
 
-## What is not shipped
+python -m bapmos.multiorgan.run_test_inference \
+  --checkpoint runs/bladder/legacy/point/point_pfus1_seed42/best_checkpoint.pth \
+  --output_dir inference_output/bladder/pfus1/point/point_pfus1_seed42
+```
 
-- Bandit policies (UCB1 / epsilon) were **not** ported to bladder in this public tree.
-  See `policies/README.md` and `experiments/prostate/legacy/policies/`.
-
-Final method and baselines remain at the case root: `../bapmos/`, `../baselines/`.
+The trainers take their settings from the command line; the `config.yaml` files record the
+intended values. Bladder has no policy experiments.

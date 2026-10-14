@@ -1,17 +1,15 @@
-# Outer loop — Random search ablation
+# Outer loop: random search
 
-- Config: `version.yaml` (compose: `bapmos_outer_loop_random`)
+- Config: `version.yaml` (compose version `bapmos_outer_loop_random`)
 - Suite: `bapmos_bo_random`
-- Sampler: Optuna RandomSampler
-- Default trials: 100
-- Same 5-D search box as TPE (`searched_clip_scale_organ`)
-- Export → `../../inner_loop/selected/random/pooled.yaml`
+- Sampler: Optuna `RandomSampler`, same search space as TPE
+- Budget: 100 trials
+- Export: `../../inner_loop/selected/random/pooled.yaml`
 
 ```bash
-python -m bapmos.hpo.study_runner run \
-  --hpo-suite bapmos_bo_random \
-  --dataset pooled \
-  --n-trials 1
+python -m bapmos.hpo.study_runner init --hpo-suite bapmos_bo_random --dataset pooled
+HPO_SEQUENTIAL=1 python -m bapmos.hpo.study_runner run \
+  --hpo-suite bapmos_bo_random --dataset pooled --n-trials 100
 ```
 
-See `docs/SEARCH_METHODS.md`.
+See [`docs/SEARCH_METHODS.md`](../../../../../docs/SEARCH_METHODS.md).

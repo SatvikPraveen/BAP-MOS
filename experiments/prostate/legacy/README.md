@@ -1,51 +1,40 @@
-# Legacy prompt / policy ablations (prostate)
+# Fixed-schedule and policy experiments (prostate)
 
-> **Historical only.** These configs are earlier MSD-only, fixed-ring, CE+Dice experiments.
-> They are **not** part of the final BAP-MOS protocol and are **not required** to reproduce
-> the main paper method tables. These runs may be useful for historical comparison or sanity
-> checks, but they **do not appear in any main paper tables.** Configs remain **runnable for
-> curiosity** but are not recommended for new work. For the final method see `../bapmos/` and
-> `docs/INNER_OUTER_LOOP.md`.
+These configs define the paper's fixed-schedule experiments and adaptive-policy variants. They
+use an earlier protocol than the final BAP-MOS method, so compare them with BAP-MOS only with
+that difference in mind. The final method is under `../bapmos/`.
 
-## Protocol (legacy)
+| Folder | Experiments | In the paper |
+|--------|-------------|--------------|
+| `box/` | Box-only prompts | Main table (SAM row, method id `box`) |
+| `point/` | Point-only prompts | Run alongside the fixed schedules |
+| `box_point/` | Box:Point = 10/90, 50/50, 90/10 | Fixed-schedule table |
+| `boxpoint_box_point/` | Box:Point:Both = 1:1:1, 1:5:1, 2:3:5, 5:1:1 | Fixed-schedule table |
+| `policies/` | `ucb1_global`, `ucb1_per_organ`, `epsilon_greedy_per_organ`, `epsilon_decay_per_organ` | Adaptive policy variants |
 
-- Reward: absolute / **negated** validation MSD
-- `reward_clip_max_msd_mm=20`
-- Fixed `ring_width=20` (not `scale_organ`)
-- Loss: **CE + Dice** (not kervadec-style) — enforced in
-  `bapmos.legacy.optimization.trainer` via `force_non_method_ce_dice_loss`.
-  Fixed-ratio prompting (`box_point`, `boxpoint_box_point`) and policies use
-  the same non-method loss as box/point.
+## Protocol
 
-## Not the same as BAP-MOS
+- Reward (policies): negated validation MSD, clipped at 20 mm (`reward_clip_max_msd_mm: 20`)
+- Negative-point ring: fixed `ring_width: 20` px (BAP-MOS scales the ring with organ size)
+- Loss: CE + Dice. `bapmos.legacy.optimization.trainer` enforces this for the ratios and
+  policies.
+- Checkpointing: fold-balanced validation MSD on the PTV, as in BAP-MOS
 
-Final BAP-MOS lives under `experiments/prostate/bapmos/` and uses:
+BAP-MOS instead uses the composite reward, the organ-scaled ring and the boundary-weighted loss
+([`docs/INNER_OUTER_LOOP.md`](../../../docs/INNER_OUTER_LOOP.md)).
 
-- Composite reward (`composite_fixed_clip`, λ=3)
-- `scale_organ` ring
-- Kervadec-style boundary loss on the inner-loop (production) path
+## Running
 
-Do not mix metrics or hyperparameters across legacy rungs and `bapmos/` without noting the protocol change.
+- Box and point: `bapmos.multiorgan.train_sam_multiorgan_decoder_box` and
+  `bapmos.multiorgan.train_sam_multiorgan_decoder_points`, with `--data_root`, `--run_root`,
+  `--run_name` and `--seed` on the command line. Their `config.yaml` files record the intended
+  values; the trainers do not read them.
+- Ratios and policies: `bapmos.legacy.optimization.trainer --config <config.yaml>
+  --experiment <name> --run_root runs/prostate/legacy --run_name <run_name>`. Ratio experiments
+  are `box10_point90`, `box50_point50`, `box90_point10` and `ratio_*`; set `PI_TRAIN_SEED=43` or
+  `44` for their replicates. Policy configs have one experiment per seed
+  (`ucb1_global_seed42`, `ucb1_global_seed43_rep2`, …).
 
-## Ladder order inside `legacy/`
-
-1. `box/`
-2. `point/`
-3. `box_point/` — **10/90, 50/50, 90/10** only (canonical ratio set)
-4. `boxpoint_box_point/` — **1:1:1, 1:5:1, 2:3:5, 5:1:1** only (canonical mix set)
-5. `policies/*` (`ucb1_global`, `ucb1_per_organ`, `epsilon_decay_per_organ`, `epsilon_greedy_per_organ`)
-
-Library support for these runs lives under `src/bapmos/legacy/` (e.g. historical bandit trainer).
-
-Baselines and the final method stay at the case root: `../baselines/`, `../bapmos/`.
-
-## Running (curiosity only)
-
-Entry points are noted in each `config.yaml`. In short:
-
-- Box / point: `python -m bapmos.multiorgan.train_sam_multiorgan_decoder_{box,points}`
-- Ratios / policies: `python -m bapmos.legacy.optimization.trainer --config <config.yaml> --experiment <name>`
-
-Run roots: `runs/prostate/legacy/…` (see `docs/RUNTIME_LAYOUT.md`). Test inference and results collation: `docs/RUNNING.md`.
-
-Use the three-seed protocol if reporting (`docs/SEEDS.md`). Prefer `../bapmos/` for any new work.
+Full commands, test export and collation:
+[`docs/RUNNING.md`](../../../docs/RUNNING.md#4-fixed-schedule-and-policy-experiments-prostate).
+The trainers live in `src/bapmos/legacy/`.

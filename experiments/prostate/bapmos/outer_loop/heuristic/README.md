@@ -1,17 +1,17 @@
-# Outer loop — Heuristic catalog search ablation
+# Outer loop: heuristic catalog
 
-- Config: `version.yaml` (compose: `bapmos_outer_loop_heuristic`)
+- Config: `version.yaml` (compose version `bapmos_outer_loop_heuristic`)
 - Suite: `bapmos_bo_heuristic`
-- Sampler: catalog (fixed multi-tier candidate list; not Optuna TPE)
-- Default trials: 100 (deduped catalog, capped)
-- Same 5-D search box as TPE (`searched_clip_scale_organ`)
-- Export → `../../inner_loop/selected/heuristic/pooled.yaml`
+- Sampler: fixed catalog in tiers, deduplicated and capped at 100 trials (no adaptive sampler)
+- Same search space as TPE
+- Export: `../../inner_loop/selected/heuristic/pooled.yaml`
+
+`init` enqueues the whole catalog; `run` trains the queued trials.
 
 ```bash
-python -m bapmos.hpo.study_runner run \
-  --hpo-suite bapmos_bo_heuristic \
-  --dataset pooled \
-  --n-trials 1
+python -m bapmos.hpo.study_runner init --hpo-suite bapmos_bo_heuristic --dataset pooled
+HPO_SEQUENTIAL=1 python -m bapmos.hpo.study_runner run \
+  --hpo-suite bapmos_bo_heuristic --dataset pooled --n-trials 100
 ```
 
-Catalog tiers: see `docs/SEARCH_METHODS.md`.
+Catalog tiers: [`docs/SEARCH_METHODS.md`](../../../../../docs/SEARCH_METHODS.md#heuristic).

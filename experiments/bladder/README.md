@@ -1,18 +1,18 @@
-# Bladder (PFUS1) experiment ladder
+# Bladder (PFUS1) experiments
 
-Same MSD objective and three-seed protocol as prostate, with
-`data_root: data/bladder/pfus1`, `checkpoint_objective.objective_organ: Bladder`,
-and defaults from `configs/bladder/common.yaml` (patience **20** / **100** epochs).
+PFUS1 experiments use `data/bladder/pfus1/`, defaults from `configs/bladder/common.yaml`
+(max 100 epochs, patience 20), the `Bladder` organ for checkpointing and search, and three seeds
+(42, 43, 44).
 
-## Layout
+| Folder | Contents | In the paper |
+|--------|----------|--------------|
+| `bapmos/outer_loop/medsam/`, `bapmos/inner_loop/medsam/` | BAP-MOS (MedSAM): suites `bapmos_bo_medsam` / `bapmos_medsam` | PFUS1 table |
+| `bapmos/outer_loop/sam/`, `bapmos/inner_loop/sam/` | BAP-MOS (SAM): suites `bapmos_bo_sam` / `bapmos_sam` | Additional experiment, not reported in the paper |
+| `baselines/{unet,nnunet,sam_box,medsam}/` | Baselines | Additional experiments, not reported in the paper |
+| `legacy/box/`, `legacy/point/` | Box-only and point-only prompts (earlier protocol) | Additional experiments, not reported in the paper |
 
-- `bapmos/outer_loop/{sam,medsam}/` — HPO suites `bapmos_bo_sam` / `bapmos_bo_medsam`
-- `bapmos/inner_loop/{sam,medsam}/` — production (selected exports + full train)
-- `baselines/{unet,nnunet,sam_box,medsam}/` — main-paper baselines
-- `legacy/box/`, `legacy/point/` — historical prompt baselines
-- `legacy/policies/` — **not implemented** here (see that README; policies live under prostate)
+The FPN row of the PFUS1 table is quoted from García et al. (2024) and is not reproduced here.
+Bladder has no search-strategy comparison and no policy experiments.
 
-No prostate-style `tpe/random/greedy/heuristic` search-method family on bladder.
-Details: `docs/EXPERIMENT_LADDER.md`, `docs/INNER_OUTER_LOOP.md`.
-
-Legacy prompt protocol: see `legacy/README.md` and `experiments/prostate/legacy/README.md`.
+Commands: [`docs/RUNNING.md`](../../docs/RUNNING.md#5-bladder-pfus1). Protocol:
+[`docs/INNER_OUTER_LOOP.md`](../../docs/INNER_OUTER_LOOP.md).

@@ -1,15 +1,14 @@
-# Results tables (reproduction CSVs)
+# Results tables
 
-Per-seed results live under `by_seed/`; mean ± std aggregates live under `combined/`.
-
-This repository does not ship result tables. Running the pipeline writes them under
-`results/prostate/` and `results/bladder/`, and those files stay local (they are git-ignored).
-The paper's numbers are reported in the [main README](../README.md).
+Running the pipeline writes per-seed tables to `by_seed/` and mean ± std tables to `combined/`,
+under `results/prostate/` and `results/bladder/`. These files are generated locally and are
+git-ignored. The repository ships no result tables; the paper's numbers are in the
+[main README](../README.md#main-results).
 
 ## Example files
 
-[`example/`](example/) shows every table a full run produces, with the same folders, file
-names, columns and rows. Only the measured values are placeholders:
+[`example/`](example/) shows every table a full run produces, with the same folders, file names,
+columns and rows. Only the measured values are placeholders:
 
 | Placeholder | Filled with |
 | --- | --- |
@@ -25,70 +24,55 @@ method,run_name,seed,site,organ,dice,msd_mm,hd95_mm,n_slices,source
 bapmos,pooled_seed42,42,simulation,PTV,<dice>,<msd_mm>,<hd95_mm>,<n_slices>,inference_output/prostate/pooled/bapmos/pooled_seed42/simulation/metrics/summary_metrics.csv
 ```
 
-**Prostate:** train pooled; infer on `simulation` / `case1` / `case2`; aggregate = slice-weighted `site=pooled`.
-Distance metrics (MSD / HD95) are in **millimeters** (native physical spacing).
+Prostate: trained on the pooled corpus, exported per site (`simulation`, `case1`, `case2`), and
+aggregated as the slice-weighted `site=pooled` row. Distances are in millimetres.
 
-**Bladder PFUS1:** paper distance metrics use **pixel-equivalent units** (CSV columns may still be named `msd_mm` / `hd95_mm` for schema consistency).
-See [`docs/RESULTS.md`](../docs/RESULTS.md).
+PFUS1: distances are in pixel units, although the columns are still named `msd_mm` and
+`hd95_mm`.
 
-## Exact method IDS (`by_seed/<method>/`)
+## Method IDs (`by_seed/<method>/`)
 
-Use these strings verbatim (`collate_seeds --method`). Source of truth: `src/bapmos/results/layout.py`.
+Pass these strings to `collate_seeds --method`. Source of truth: `src/bapmos/results/layout.py`.
 
-**Prostate pooled:** `box`, `point`, `box_point`, `boxpoint_box_point`, `ucb1_global`, `ucb1_per_organ`, `epsilon_greedy_per_organ`, `epsilon_decay_per_organ`, `bapmos`, `bapmos_medsam`, `bapmos_random`, `bapmos_heuristic`, `bapmos_greedy`, `unet`, `nnunet`, `medsam`
+- Prostate: `box`, `point`, `box_point`, `boxpoint_box_point`, `ucb1_global`, `ucb1_per_organ`,
+  `epsilon_greedy_per_organ`, `epsilon_decay_per_organ`, `bapmos`, `bapmos_medsam`,
+  `bapmos_random`, `bapmos_heuristic`, `bapmos_greedy`, `unet`, `nnunet`, `medsam`
+- Bladder: `box`, `point`, `bapmos_sam`, `bapmos_medsam`, `unet`, `nnunet`, `medsam`
 
-**Bladder PFUS1:** `box`, `point`, `bapmos_sam`, `bapmos_medsam`, `unet`, `nnunet`, `medsam` (no legacy ratio/policy methods on bladder)
+`example/` has no bladder `point` folder, because no bladder point-only run is part of the
+shipped example layout. If you train one (`experiments/bladder/legacy/point/`), it collates
+under `point` like any other method.
 
-## Result layout
+Which README row each id produces (for example, the prostate SAM row is `box`, and the PFUS1
+BAP-MOS (MedSAM) row is bladder `bapmos_medsam`) is listed in
+[`docs/RESULTS.md`](../docs/RESULTS.md#paper-tables-and-method-ids).
+
+## Layout
 
 ```text
 results/
   prostate/pooled/
     by_seed/<method>/<run_name>.csv
     combined/
-      prostate_pooled_mean_std.csv      # all organs, site=pooled
-      prostate_pooled_ptv_mean_std.csv  # PTV only (primary organ)
+      prostate_pooled_mean_std.csv         # all organs, site=pooled
+      prostate_pooled_ptv_mean_std.csv     # PTV only (primary organ)
   bladder/pfus1/
     by_seed/<method>/<run_name>.csv
     combined/
-      bladder_pfus1_mean_std.csv           # all organs, site=pfus1
+      bladder_pfus1_mean_std.csv           # all organs
       bladder_pfus1_bladder_mean_std.csv   # Bladder only (primary organ)
 ```
 
-Collated metrics: **Dice, MSD, HD95** only (units: mm for prostate; pixel-equivalent for PFUS1 paper tables).
+Collated metrics are Dice, MSD and HD95.
 
-Scratch dumps and audit/status CSVs are **not** shipped (see `.gitignore`).
+## Building the tables
 
-## Populate after inference (recommended)
-
-From the repository root:
+From the repository root, after the test exports:
 
 ```bash
 bash scripts/populate_results_prostate.sh
-# Legacy ladder only: LADDER_ONLY=1 bash scripts/populate_results_prostate.sh
-# Rebuild combined/ only: BUILD_ONLY=1 bash scripts/populate_results_prostate.sh
+bash scripts/populate_results_bladder.sh
 ```
 
-See [`docs/RUNNING.md`](../docs/RUNNING.md) for per-method `python -m` ingest examples.
-
-## Manual CLI (from the repository root)
-
-```bash
-export PYTHONPATH="$(pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
-
-# box: run_name is pooled_seed42 (not box_pooled_seed42)
-python -m bapmos.results.collate_seeds ingest-run \
-  --corpus prostate --method box --run-name pooled_seed42 \
-  --run-dir inference_output/prostate/pooled/box/box_pooled_seed42
-
-# box_point: run_name matches inference folder
-python -m bapmos.results.collate_seeds ingest-run \
-  --corpus prostate --method box_point --run-name box50_point50_seed42 \
-  --run-dir inference_output/prostate/pooled/box_point/box50_point50_seed42
-
-# Repeat ingest-run for seeds 42, 43, and 44 before building
-# the three-seed mean ± std tables.
-python -m bapmos.results.collate_seeds build --corpus prostate
-```
-
-See [`docs/RESULTS.md`](../docs/RESULTS.md) and the [main README](../README.md) for additional details.
+Options and the manual `collate_seeds` commands are in
+[`docs/RESULTS.md`](../docs/RESULTS.md#automated-collation).
