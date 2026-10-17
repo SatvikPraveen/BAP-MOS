@@ -380,3 +380,19 @@ experiments:
 - name: medsam_reference_seed44_rep3
   seed: 44
   overrides: *medsam_overrides
+# Verification of the paper protocol: reference with the per-epoch train-metrics pass on
+# (eval_train_metrics: true), the only camera-ready change that touches training (shuffle order).
+- name: reference_evaltrain_seed42
+  seed: 42
+  overrides: &evaltrain_overrides
+    ablation:
+      variant: reference_evaltrain
+      variant_description: BAP-MOS reference with the paper's train-metrics pass (shuffle order as in the paper)
+    evaluation:
+      eval_train_metrics: true
+- name: reference_evaltrain_seed43_rep2
+  seed: 43
+  overrides: *evaltrain_overrides
+- name: reference_evaltrain_seed44_rep3
+  seed: 44
+  overrides: *evaltrain_overrides
