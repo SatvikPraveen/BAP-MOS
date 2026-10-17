@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
-# Submit one camera-ready job onto any idle modern GPU (both partitions; 1080Ti / TitanRTX
-# nodes excluded, since recent CUDA wheels may not support them). Usage:
+# Submit one camera-ready job with this cluster's site settings. Usage:
 #   bash scripts/camera_ready/submit.sh <job.slurm> KEY=VALUE ...
 #   bash scripts/camera_ready/submit.sh pack.slurm EXPS="global_seed42 global_seed43_rep2"
-# Every job logs its GPU in preflight; collation reads it from the log.
+# Job scripts hold only portable resources (CPUs, memory, time); partition, account, QOS,
+# GPU request and log path are set here. Every job logs its GPU in preflight.
+#   GAIVI: any modern GPU on Contributors/general (1080Ti and TitanRTX nodes excluded)
+#   Anvil: one A100 on the ai partition, account cis260833-ai
 set -euo pipefail
 job="$1"; shift
 here="$(cd "$(dirname "$0")" && pwd)"
-exports="ALL"
+cr_root="$(cd "${here}/../../.." && pwd)"
+exports="ALL,CR_ROOT=${cr_root}"
 for kv in "$@"; do exports+=",${kv}"; done
-sbatch --partition=Contributors,general --gres=gpu:1 \
-  --exclude=GPU3,GPU4,GPU6,GPU8,GPU9,GPU22,GPU42 \
-  --export="${exports}" "${here}/${job}"
+mkdir -p "${cr_root}/logs"
+case "$(hostname -f)" in
+  *gaivi*|GPU*)
+    site=(--partition=Contributors,general --qos=maxjobs50 --gres=gpu:1
+          --exclude=GPU3,GPU4,GPU6,GPU8,GPU9,GPU22,GPU42) ;;
+  *anvil*)
+    site=(--partition=ai --account=cis260833-ai --gres=gpu:1) ;;
+  *) echo "submit.sh: unknown cluster $(hostname -f)" >&2; exit 2 ;;
+esac
+sbatch "${site[@]}" --output="${cr_root}/logs/%x-%j.out" --export="${exports}" "${here}/${job}"

@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-table1
-#SBATCH --partition=Contributors
-#SBATCH --qos=maxjobs50
-#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=48G
 #SBATCH --time=24:00:00
-#SBATCH --output=/data/satvikpraveen/camera_ready/logs/%x-%j.out
 #
 # One Table I cell (decoder-only vs full-model fine-tuning) on the pooled split, then its
 # native-grid test export:

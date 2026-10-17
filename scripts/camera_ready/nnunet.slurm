@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-nnunet
-#SBATCH --partition=Contributors
-#SBATCH --qos=maxjobs50
-#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=96G
 #SBATCH --time=48:00:00
-#SBATCH --output=/data/satvikpraveen/camera_ready/logs/%x-%j.out
 #
 # One nnU-Net replicate (2D, fold 0 = the repository's train/val split, BAP-MOS protocol
 # trainer), then per-site prediction and native-grid export. nnU-Net has no seed option;

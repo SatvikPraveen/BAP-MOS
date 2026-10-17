@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-sambox
-#SBATCH --partition=Contributors
-#SBATCH --qos=maxjobs50
-#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --output=/data/satvikpraveen/camera_ready/logs/%x-%j.out
 #
 # SAM (box) baseline on PFUS1 (docs/RUNNING.md recipe: 100 epochs, patience 20, batch 128)
 # with the 2 px box jitter every box-prompted camera-ready method uses. On TRUS the SAM (box)

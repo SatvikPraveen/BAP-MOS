@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-export
-#SBATCH --partition=Contributors
-#SBATCH --qos=maxjobs50
-#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=04:00:00
-#SBATCH --output=/data/satvikpraveen/camera_ready/logs/%x-%j.out
 #
 # Test export for one trained BAP-MOS-family checkpoint, scored on the native grid.
 #   sbatch --export=ALL,CKPT=runs/.../best_checkpoint.pth,OUT=inference_output/camera_ready/<name> \

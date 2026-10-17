@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-nnprep
-#SBATCH --partition=Contributors
-#SBATCH --qos=maxjobs50
-#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=96G
 #SBATCH --time=12:00:00
-#SBATCH --output=/data/satvikpraveen/camera_ready/logs/%x-%j.out
 #
 # Shared nnU-Net prep, once per dataset, before any replicate (nnunet.slurm):
 #   train+val export -> nnUNet_raw, plan_and_preprocess -> nnUNet_preprocessed, one private

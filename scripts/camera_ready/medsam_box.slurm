@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-medsam
-#SBATCH --partition=Contributors
-#SBATCH --qos=maxjobs50
-#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --output=/data/satvikpraveen/camera_ready/logs/%x-%j.out
 #
 # MedSAM (box) baseline: MedSAM-initialised SAM ViT-B, decoder fine-tuned with fixed box
 # prompts (docs/RUNNING.md recipe). Box jitter is 2 px, the same for every box-prompted method.

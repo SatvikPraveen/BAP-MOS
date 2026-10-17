@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-unet
-#SBATCH --partition=Contributors
-#SBATCH --qos=maxjobs50
-#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=24:00:00
-#SBATCH --output=/data/satvikpraveen/camera_ready/logs/%x-%j.out
 #
 # Train and export one U-Net baseline (experiments/prostate/baselines/unet/README.md recipe).
 #   sbatch --export=ALL,SEED=42 scripts/camera_ready/unet.slurm                 # pooled split

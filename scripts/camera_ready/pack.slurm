@@ -1,19 +1,15 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-pack
-#SBATCH --partition=Contributors
-#SBATCH --qos=maxjobs50
-#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=96G
 #SBATCH --time=24:00:00
-#SBATCH --output=/data/satvikpraveen/camera_ready/logs/%x-%j.out
 #
 # Several camera-ready suite experiments sharing one GPU. With cached embeddings a
 # decoder-only run leaves most of a large GPU idle, so packing raises throughput; each run
 # is an independent process with its own seed, log and run folder, and the CPU threads are
 # split evenly so metric passes do not compete.
-#   sbatch --export=ALL,EXPS="global_seed42 global_seed43_rep2 global_seed44_rep3" \
-#     --gres=gpu:H100:1 scripts/camera_ready/pack.slurm
+#   bash scripts/camera_ready/submit.sh pack.slurm \
+#     EXPS="global_seed42 global_seed43_rep2 global_seed44_rep3"
 # Exits non-zero if any packed run fails; rerunning resumes each from last_checkpoint.pth.
 # PFUS1: VERSION=bapmos_camera_ready_pfus1_<sam|medsam> DATASET=pfus1
 #        RUN_ROOT=runs/bladder/camera_ready/<sam|medsam>  EXPS="pfus1_seed42 ..."
