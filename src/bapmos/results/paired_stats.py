@@ -12,7 +12,8 @@ is run per organ and over all organs, with Holm correction across the organ test
       --out results/camera_ready/paired_bapmos_vs_box_only.csv
 
 Slices from one cohort come from one volume and are correlated, so p-values are
-optimistic; report them with that caveat. Slice-organ pairs where either method has no
+optimistic; report them with that caveat. On PFUS1, ``--unit patient`` first averages each
+patient's frames (image ids ``P<id>_frame_<n>``), so the test pairs independent patients. Slice-organ pairs where either method has no
 valid boundary (e.g. an empty prediction) are not paired; their counts are reported as
 ``a_invalid`` / ``b_invalid`` so missed organs stay visible.
 """
@@ -20,6 +21,7 @@ valid boundary (e.g. an empty prediction) are not paired; their counts are repor
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 from typing import Dict, List, Sequence
 
@@ -28,6 +30,24 @@ import pandas as pd
 from scipy.stats import wilcoxon
 
 METRICS = ("dice", "hd95_mm", "msd_mm")
+_PATIENT_RE = re.compile(r"^(P\d+)_frame_")
+
+
+def patient_of(image_id: str) -> str:
+    """PFUS1 patient id from ``P<id>_frame_<n>`` image ids (raises for other ids)."""
+    m = _PATIENT_RE.match(Path(str(image_id)).stem)
+    if not m:
+        raise ValueError(f"No patient id in image id {image_id!r}; use --unit slice")
+    return m.group(1)
+
+
+def to_patient_level(df: "pd.DataFrame") -> "pd.DataFrame":
+    """Average seed-mean slice metrics per (site, patient, organ); invalid counts are summed."""
+    out = df.copy()
+    out["image_id"] = out["image_id"].map(patient_of)
+    agg = {m: "mean" for m in METRICS}
+    agg["invalid"] = "sum"
+    return out.groupby(["site", "image_id", "organ"], as_index=False).agg(agg)
 
 
 def load_per_slice(export_dir: Path) -> pd.DataFrame:
@@ -117,13 +137,18 @@ def main(argv: List[str] | None = None) -> int:
     p.add_argument("--a-name", default="A")
     p.add_argument("--b-name", default="B")
     p.add_argument("--out", required=True)
-    args = p.parse_args(argv)
-    table = paired_table(
-        seed_mean([Path(d) for d in args.a]),
-        seed_mean([Path(d) for d in args.b]),
-        args.a_name,
-        args.b_name,
+    p.add_argument(
+        "--unit",
+        choices=("slice", "patient"),
+        default="slice",
+        help="Pairing unit: slices (TRUS) or patients (PFUS1, P<id>_frame_<n> ids)",
     )
+    args = p.parse_args(argv)
+    a = seed_mean([Path(d) for d in args.a])
+    b = seed_mean([Path(d) for d in args.b])
+    if args.unit == "patient":
+        a, b = to_patient_level(a), to_patient_level(b)
+    table = paired_table(a, b, args.a_name, args.b_name)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(args.out, index=False)
     print(table.to_string(index=False))

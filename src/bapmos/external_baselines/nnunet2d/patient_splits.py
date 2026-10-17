@@ -99,11 +99,23 @@ def write_splits_final(
     preprocessed_dataset_folder_base: Path,
     splits: Sequence[Dict[str, List[str]]],
 ) -> Path:
-    """Write ``splits_final.json`` next to ``nnUNetPlans_2d``."""
+    """Write ``splits_final.json`` next to ``nnUNetPlans_2d``.
+
+    Leaves an identical existing file untouched and otherwise replaces it atomically, so
+    replicate runs sharing one preprocessed folder never read a partly written file.
+    """
     out = Path(preprocessed_dataset_folder_base) / "splits_final.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "w", encoding="utf-8") as f:
-        json.dump(list(splits), f, indent=2)
+    payload = list(splits)
+    if out.is_file():
+        try:
+            if json.loads(out.read_text(encoding="utf-8")) == payload:
+                return out
+        except json.JSONDecodeError:
+            pass
+    tmp = out.with_name(f"{out.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    os.replace(tmp, out)
     return out
 
 

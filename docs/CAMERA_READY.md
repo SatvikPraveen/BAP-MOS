@@ -27,6 +27,28 @@ study `bapmos_stage1_pooled_ptv_kfold_sclip` (111 completed trials). `main`'s
 The suite therefore carries the paper's vector in its own `selected/paper_tpe/pooled.yaml` and
 leaves `main`'s `selected/` unchanged.
 
+## Uniformity
+
+Every row of a table is trained and scored under the same conditions, per dataset:
+
+| Setting | TRUS (pooled) | PFUS1 |
+|---------|---------------|-------|
+| Split | slice-level 70/15/15 (seed 42), plus LOCO | patient-level 70/15/15 (seed 42) |
+| Seeds | 42, 43, 44 (nnU-Net: three unseeded replicates) | same |
+| Epochs / patience | 300 / 40 | 100 / 20 |
+| Learning rate | 1e-4 | 1e-4 |
+| Checkpoint selection | 5-fold validation MSD of the PTV | 5-fold validation MSD of the bladder |
+| Box jitter (box-prompted methods) | outward 0–2 px per edge, training only | same |
+| Test prompts (promptable methods) | from the GT mask, no jitter, highest-Q action | same |
+| Scoring | native grid, one export path, mean ± std over seeds | same |
+| Data / environment | pinned snapshot (DATA_SHA256_*.txt), one env per toolkit, GPU logged | same |
+
+What differs between methods is the method itself: BAP-MOS trains with CE + Dice + boundary
+loss and Adam; the SAM and MedSAM baselines use CE + Dice and AdamW (weight decay 1e-4); U-Net
+uses CE + Dice; nnU-Net uses its own pipeline. The matched controls (`box_only`, `fixed_235`)
+run inside the BAP-MOS trainer with the same loss, optimizer, schedule and data path, so each
+row of the ablation table differs from BAP-MOS in one factor only.
+
 ## Layout on the cluster
 
 ```text

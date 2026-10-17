@@ -3,8 +3,9 @@
 #
 #   bash scripts/camera_ready/prep.sh loco          1. LOCO split lists
 #   sbatch scripts/camera_ready/prep_embeddings.slurm   2. frozen SAM embeddings (GPU)
-#   bash scripts/camera_ready/prep.sh pin           3. pin every data file in DATA_SHA256.txt
-#   bash scripts/camera_ready/prep.sh check         verify (what every job does at start)
+#   bash scripts/camera_ready/prep.sh pin prostate  3. pin data/prostate in DATA_SHA256_prostate.txt
+#   bash scripts/camera_ready/prep.sh pin pfus1        and data/bladder in DATA_SHA256_pfus1.txt
+#   DATASET=pfus1 bash scripts/camera_ready/prep.sh check   verify, as every job does at start
 #
 # Jobs only verify these (cr_preflight); they never rebuild them. "pin" refuses to overwrite
 # an existing manifest unless FORCE=1, so a running wave never sees its inputs change.
@@ -15,16 +16,24 @@ case "${1:-}" in
     "${PY}" -m bapmos.preprocess.prostate.create_loco_splits
     ;;
   pin)
-    if [[ -f "${CR_ROOT}/DATA_SHA256.txt" && "${FORCE:-0}" != "1" ]]; then
-      echo "prep: ${CR_ROOT}/DATA_SHA256.txt exists; use FORCE=1 to re-pin" >&2
+    # prep.sh pin prostate | pfus1
+    case "${2:-}" in
+      prostate)
+        "${PY}" -m bapmos.preprocess.prostate.create_loco_splits --check
+        for emb in data/prostate/pooled/{sam,medsam}_vit_b_embeddings/manifest.json; do
+          [[ -f "${emb}" ]] || { echo "prep: ${emb} missing; run prep_embeddings.slurm first" >&2; exit 1; }
+        done
+        dir=data/prostate ;;
+      pfus1) dir=data/bladder ;;
+      *) echo "usage: $0 pin {prostate|pfus1}" >&2; exit 2 ;;
+    esac
+    out="${CR_ROOT}/DATA_SHA256_${2}.txt"
+    if [[ -f "${out}" && "${FORCE:-0}" != "1" ]]; then
+      echo "prep: ${out} exists; use FORCE=1 to re-pin" >&2
       exit 1
     fi
-    "${PY}" -m bapmos.preprocess.prostate.create_loco_splits --check
-    for emb in data/prostate/pooled/{sam,medsam}_vit_b_embeddings/manifest.json; do
-      [[ -f "${emb}" ]] || { echo "prep: ${emb} missing; run prep_embeddings.slurm first" >&2; exit 1; }
-    done
-    find data/prostate -type f | LC_ALL=C sort | xargs sha256sum > "${CR_ROOT}/DATA_SHA256.txt"
-    echo "prep: pinned $(wc -l < "${CR_ROOT}/DATA_SHA256.txt") files → ${CR_ROOT}/DATA_SHA256.txt"
+    find "${dir}" -type f | LC_ALL=C sort | xargs sha256sum > "${out}"
+    echo "prep: pinned $(wc -l < "${out}") files → ${out}"
     ;;
   check)
     cr_preflight

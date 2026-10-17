@@ -401,3 +401,43 @@ def test_camera_ready_pfus1_suites_use_paper_era_search(backbone, trial, clip, r
         version=f"bapmos_camera_ready_pfus1_{backbone}", dataset="pfus1", experiment_name="pfus1_seed43_rep2"
     )
     assert run["experiment_seed"] == 43
+
+
+def test_write_splits_final_skips_identical_and_replaces_changed(tmp_path):
+    import json
+
+    from bapmos.external_baselines.nnunet2d.patient_splits import write_splits_final
+
+    splits = [{"train": ["a", "b"], "val": ["c"]}]
+    out = write_splits_final(tmp_path, splits)
+    mtime = out.stat().st_mtime_ns
+    assert write_splits_final(tmp_path, splits) == out
+    assert out.stat().st_mtime_ns == mtime  # identical content: not rewritten
+    write_splits_final(tmp_path, [{"train": ["a"], "val": ["b", "c"]}])
+    assert json.loads(out.read_text())[0]["val"] == ["b", "c"]
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_paired_stats_patient_level_averages_frames():
+    import pandas as pd
+
+    from bapmos.results.paired_stats import patient_of, to_patient_level
+
+    assert patient_of("P012_frame_0034") == "P012"
+    with pytest.raises(ValueError):
+        patient_of("MR.1.2.png")
+    df = pd.DataFrame(
+        {
+            "site": ["test"] * 4,
+            "image_id": ["P001_frame_1", "P001_frame_2", "P002_frame_1", "P002_frame_2"],
+            "organ": ["Bladder"] * 4,
+            "dice": [0.8, 0.6, 0.9, 0.7],
+            "hd95_mm": [2.0, 4.0, 1.0, 3.0],
+            "msd_mm": [1.0, 1.0, 1.0, 1.0],
+            "invalid": [0, 1, 0, 0],
+        }
+    )
+    out = to_patient_level(df).set_index("image_id")
+    assert out.loc["P001", "dice"] == pytest.approx(0.7)
+    assert out.loc["P002", "hd95_mm"] == pytest.approx(2.0)
+    assert out.loc["P001", "invalid"] == 1

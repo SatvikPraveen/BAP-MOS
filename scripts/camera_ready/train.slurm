@@ -11,6 +11,8 @@
 # Train one camera-ready experiment (experiments/prostate/camera_ready/version.yaml):
 #   sbatch --export=ALL,EXP=global_seed42 scripts/camera_ready/train.slurm
 # Resumes from last_checkpoint.pth when the run folder already has one.
+# PFUS1: also set VERSION=bapmos_camera_ready_pfus1_<sam|medsam> DATASET=pfus1
+#        RUN_ROOT=runs/bladder/camera_ready/<sam|medsam>.
 # Default A100; submit with --gres=gpu:<TYPE>:1 to use another modern GPU (not 1080Ti/TitanRTX).
 # preflight logs the device, so every run records the GPU it used.
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
@@ -21,12 +23,12 @@ if [[ "${EXP}" == loco_* ]]; then
 fi
 
 resume=()
-if [[ -f "runs/prostate/camera_ready/${EXP}/last_checkpoint.pth" ]]; then
+if [[ -f "${RUN_ROOT:-runs/prostate/camera_ready}/${EXP}/last_checkpoint.pth" ]]; then
   resume=(--resume auto)
 fi
 start=$(date +%s)
 "${PY}" -m bapmos.method.bap_mos_trainer \
-  --version bapmos_camera_ready --dataset pooled \
+  --version "${VERSION:-bapmos_camera_ready}" --dataset "${DATASET:-pooled}" \
   --experiment "${EXP}" --run-name "${EXP}" \
   --no-wandb --skip-test "${resume[@]}"
 echo "train: ${EXP} finished in $(( $(date +%s) - start )) s"

@@ -15,6 +15,8 @@
 #   sbatch --export=ALL,EXPS="global_seed42 global_seed43_rep2 global_seed44_rep3" \
 #     --gres=gpu:H100:1 scripts/camera_ready/pack.slurm
 # Exits non-zero if any packed run fails; rerunning resumes each from last_checkpoint.pth.
+# PFUS1: VERSION=bapmos_camera_ready_pfus1_<sam|medsam> DATASET=pfus1
+#        RUN_ROOT=runs/bladder/camera_ready/<sam|medsam>  EXPS="pfus1_seed42 ..."
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 : "${EXPS:?set EXPS=\"exp1 exp2 ...\"}"
 cr_preflight
@@ -29,11 +31,11 @@ fi
 pids=()
 for exp in "${exps[@]}"; do
   resume=()
-  [[ -f "runs/prostate/camera_ready/${exp}/last_checkpoint.pth" ]] && resume=(--resume auto)
+  [[ -f "${RUN_ROOT:-runs/prostate/camera_ready}/${exp}/last_checkpoint.pth" ]] && resume=(--resume auto)
   log="${CR_ROOT}/logs/run-${exp}.log"
   echo "pack: starting ${exp} (${threads} threads) → ${log}"
   "${PY}" -m bapmos.method.bap_mos_trainer \
-    --version bapmos_camera_ready --dataset pooled \
+    --version "${VERSION:-bapmos_camera_ready}" --dataset "${DATASET:-pooled}" \
     --experiment "${exp}" --run-name "${exp}" \
     --no-wandb --skip-test "${resume[@]}" >> "${log}" 2>&1 &
   pids+=($!)

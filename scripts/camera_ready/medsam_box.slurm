@@ -30,6 +30,9 @@ run_root="runs/camera_ready_baselines/${DATASET:-pooled}"
 resume=()
 [[ -f "${run_root}/medsam_init/${name}/last_checkpoint.pth" ]] && resume=(--resume auto)
 
+# Keep every prediction on TRUS (automatic-prompt runs); protocol default (10) on PFUS1.
+viz_max=1000
+[[ "${DATASET:-pooled}" == pfus1 ]] && viz_max=10
 "${PY}" -m bapmos.external_baselines.medsam_init.train_decoder_boxes \
   --data_root "${data_root}" --medsam_checkpoint models/medsam/medsam_vit_b.pth \
   --run_root "${run_root}" --run_name "${name}" --seed "${SEED}" --box_noise_pixels 2 \
@@ -37,4 +40,4 @@ resume=()
 "${PY}" -m bapmos.external_baselines.medsam_init.run_test_inference \
   --checkpoint "${run_root}/medsam_init/${name}/best_checkpoint.pth" \
   --output_dir "inference_output/camera_ready/medsam/${name}" \
-  --viz-pdf-max 1000 --force-inference-output
+  --viz-pdf-max "${viz_max}" --force-inference-output

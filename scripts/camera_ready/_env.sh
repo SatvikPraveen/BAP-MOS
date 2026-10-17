@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Shared environment and preflight for camera-ready jobs (sourced by the .slurm files).
 #
-# CR_ROOT holds the clone (BAP-MOS/), the pinned env (env/), caches and DATA_SHA256.txt:
+# CR_ROOT holds the clone (BAP-MOS/), the pinned envs (env/, env_nnunet/), caches and manifests:
 #   ${CR_ROOT}/BAP-MOS            this repository, branch camera-ready-experiments
 #   ${CR_ROOT}/env                python env with requirements.txt pins
-#   ${CR_ROOT}/DATA_SHA256.txt    sha256 of every file under data/prostate (written by prep.sh)
+#   ${CR_ROOT}/DATA_SHA256_{prostate,pfus1}.txt   sha256 of every data file (prep.sh pin)
 #
 # Every job verifies the data manifest before starting and refuses to run on a mismatch;
 # nothing here rebuilds shared data. All caches and temp files stay under CR_ROOT.
@@ -25,17 +25,28 @@ mkdir -p "${XDG_CACHE_HOME}" "${TORCH_HOME}" "${MPLCONFIGDIR}" "${WANDB_DIR}" "$
   "${CR_ROOT}/logs"
 cd "${REPO}"
 
+# One pinned manifest per corpus, so a job only hashes the data it reads.
+cr_manifest() {
+  if [[ "${DATASET:-pooled}" == pfus1 ]]; then
+    echo "${CR_ROOT}/DATA_SHA256_pfus1.txt"
+  else
+    echo "${CR_ROOT}/DATA_SHA256_prostate.txt"
+  fi
+}
+
 cr_preflight() {
   # Refuse to start unless the pinned data snapshot is unchanged.
-  if [[ ! -f "${CR_ROOT}/DATA_SHA256.txt" ]]; then
-    echo "preflight: ${CR_ROOT}/DATA_SHA256.txt missing; run scripts/camera_ready/prep.sh" >&2
+  local manifest
+  manifest="$(cr_manifest)"
+  if [[ ! -f "${manifest}" ]]; then
+    echo "preflight: ${manifest} missing; run scripts/camera_ready/prep.sh pin" >&2
     exit 3
   fi
-  if ! sha256sum --quiet -c "${CR_ROOT}/DATA_SHA256.txt"; then
-    echo "preflight: data under ${REPO}/data differs from DATA_SHA256.txt; refusing to run" >&2
+  if ! sha256sum --quiet -c "${manifest}"; then
+    echo "preflight: data under ${REPO}/data differs from ${manifest}; refusing to run" >&2
     exit 3
   fi
-  echo "preflight: data manifest ok ($(wc -l < "${CR_ROOT}/DATA_SHA256.txt") files)"
+  echo "preflight: data manifest ok ($(wc -l < "${manifest}") files, ${manifest##*/})"
   echo "preflight: commit $(git -C "${REPO}" rev-parse --short HEAD)" \
     "$(git -C "${REPO}" status --porcelain --untracked-files=no | wc -l) modified tracked files"
   "${PY}" -c "import torch; print('preflight: torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')"

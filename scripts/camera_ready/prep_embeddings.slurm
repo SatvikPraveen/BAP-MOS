@@ -12,7 +12,7 @@
 # every pooled slice, written once and checked against on-the-fly encoding.
 #   bash scripts/camera_ready/prep.sh loco      # login node
 #   sbatch scripts/camera_ready/prep_embeddings.slurm
-#   bash scripts/camera_ready/prep.sh pin       # login node, after this job succeeds
+#   bash scripts/camera_ready/prep.sh pin prostate   # login node, after this job succeeds
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 "${PY}" -m bapmos.preprocess.prostate.precompute_sam_embeddings \
   --out-dir data/prostate/pooled/sam_vit_b_embeddings --device cuda
