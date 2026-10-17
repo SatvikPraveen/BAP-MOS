@@ -11,7 +11,8 @@
 # Train one camera-ready experiment (experiments/prostate/camera_ready/version.yaml):
 #   sbatch --export=ALL,EXP=global_seed42 scripts/camera_ready/train.slurm
 # Resumes from last_checkpoint.pth when the run folder already has one.
-# All training runs use one GPU type (A100) so throughput, not results, varies by node.
+# Default A100; submit with --gres=gpu:<TYPE>:1 to use another modern GPU (not 1080Ti/TitanRTX).
+# preflight logs the device, so every run records the GPU it used.
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 : "${EXP:?set EXP=<experiment name>}"
 cr_preflight
