@@ -7,9 +7,11 @@
 # Shared PFUS1 prep (once, before PFUS1 jobs and before "prep.sh pin pfus1"): frozen SAM and
 # MedSAM embeddings for every PFUS1 frame, float32 so cached BAP-MOS runs see exactly the
 # encoder outputs the on-the-fly baselines compute. --overwrite replaces any copied cache.
-#   bash scripts/camera_ready/submit.sh pfus1_prep_embeddings.slurm DATASET=pfus1
+#   bash scripts/camera_ready/submit.sh pfus1_prep_embeddings.slurm DATASET=pfus1 INIT=meta
+#   bash scripts/camera_ready/submit.sh pfus1_prep_embeddings.slurm DATASET=pfus1 INIT=medsam
+# (one small job per encoder; without INIT both are built in one job)
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
-for init in meta medsam; do
+for init in ${INIT:-meta medsam}; do
   if [[ "${init}" == meta ]]; then
     ckpt=models/sam_base/sam_vit_b_01ec64.pth; out=data/bladder/pfus1/sam_embeddings/sam_vit_b
   else
