@@ -1,0 +1,361 @@
+# Camera-ready (reviewer-response) suite: controls and ablations of the BAP-MOS inner loop.
+#
+# Every variant starts from the production inner loop (experiments/prostate/bapmos/
+# inner_loop/version.yaml + its selected/tpe winner, unchanged) and changes one thing
+# through its experiment ``overrides``. Three seeds per variant (docs/SEEDS.md).
+#
+#   python -m bapmos.method.bap_mos_trainer --version bapmos_camera_ready \
+#     --dataset pooled --experiment global_seed42 --run-name global_seed42
+#
+# LOCO variants need the split lists first:
+#   python -m bapmos.preprocess.prostate.create_loco_splits
+#
+# Runs land under runs/prostate/camera_ready/<experiment>/.
+
+ablation:
+  version: bapmos_camera_ready
+  id: camera_ready
+  parameter_source: bayesian_selected
+  # Reuse the production TPE winner (experiments/prostate/bapmos/inner_loop/selected/tpe).
+  selected_from_suite: bapmos
+  description: "Reviewer-response controls and ablations on the BAP-MOS inner loop"
+
+run_root: runs/prostate/camera_ready
+
+common:
+  data_root: data/prostate/pooled
+  splits_subdir: splits_stratified
+  sam_checkpoint: models/sam_base/sam_vit_b_01ec64.pth
+  max_epochs: 300
+  batch_size: 1
+  lr: 1.0e-4
+  patience: 40
+  num_workers: 0
+  pixel_spacing: [0.159072, 0.159072]
+
+# Default hyperparameters = searched_clip_scale_organ enqueue baseline.
+# After outer-loop export, prefer compose (defaults to selected/tpe) or
+# BAPMOS_SELECTED_SUBDIR=selected/<method>, or paste exported blocks into this file.
+
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 20.0
+  hd95_lambda: 3.0
+
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.1
+  r_min: 6
+  num_pos: 1
+  num_neg: 3
+  box_jitter_px: 2
+
+bandit:
+  memory: sliding
+  window_size: 50
+  block_size_batches: 50
+  arms: [box, point, both]
+  warmup_blocks_per_arm: 10
+  min_pulls_per_arm: 5
+  probe_size: 20
+  probe_seed: 42
+
+training:
+  loss_mode: kervadec
+  kervadec:
+    alpha_start: 1.0
+    alpha_end: 0.5
+    alpha_schedule: linear
+
+wandb:
+  enabled: true
+  tags: [BAP-MOS, camera_ready, kervadec, ptv_kfold, prostate]
+
+evaluation:
+  run_test_after_train: false
+  eval_train_metrics: true
+  # Production keeps checkpoints; only outer_loop HPO deletes trial .pth after scoring.
+  cleanup_checkpoints_after_train: false
+  objective_metric: ptv_kfold_msd
+  kfold_n: 5
+  kfold_seed: 42
+
+experiments:
+- name: reference_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: reference
+      variant_description: BAP-MOS rerun (per-organ UCB-Tuned); the reference row
+- name: reference_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: reference
+      variant_description: BAP-MOS rerun (per-organ UCB-Tuned); the reference row
+- name: reference_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: reference
+      variant_description: BAP-MOS rerun (per-organ UCB-Tuned); the reference row
+- name: global_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: global
+      variant_description: One shared UCB-Tuned selector for all organs
+    bandit: &id001
+      scope: global
+- name: global_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: global
+      variant_description: One shared UCB-Tuned selector for all organs
+    bandit: *id001
+- name: global_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: global
+      variant_description: One shared UCB-Tuned selector for all organs
+    bandit: *id001
+- name: fixed_235_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: fixed_235
+      variant_description: Fixed Box:Point:Both = 2:3:5 schedule under the BAP-MOS protocol
+    bandit: &id002
+      scope: fixed
+      fixed_weights:
+        box: 2
+        point: 3
+        both: 5
+- name: fixed_235_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: fixed_235
+      variant_description: Fixed Box:Point:Both = 2:3:5 schedule under the BAP-MOS protocol
+    bandit: *id002
+- name: fixed_235_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: fixed_235
+      variant_description: Fixed Box:Point:Both = 2:3:5 schedule under the BAP-MOS protocol
+    bandit: *id002
+- name: box_only_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: box_only
+      variant_description: Box prompts only under the BAP-MOS protocol (matched SAM-box control)
+    bandit: &id003
+      arms:
+      - box
+- name: box_only_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: box_only
+      variant_description: Box prompts only under the BAP-MOS protocol (matched SAM-box control)
+    bandit: *id003
+- name: box_only_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: box_only
+      variant_description: Box prompts only under the BAP-MOS protocol (matched SAM-box control)
+    bandit: *id003
+- name: dice_reward_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: dice_reward
+      variant_description: Dice-only bandit reward
+    reward: &id004
+      mode: dice_only
+- name: dice_reward_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: dice_reward
+      variant_description: Dice-only bandit reward
+    reward: *id004
+- name: dice_reward_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: dice_reward
+      variant_description: Dice-only bandit reward
+    reward: *id004
+- name: fixed_ring_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: fixed_ring
+      variant_description: Fixed 16 px negative ring (r_min, no organ scaling)
+    prompt_geometry: &id005
+      ring_mode: fixed
+      ring_width: 16
+- name: fixed_ring_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: fixed_ring
+      variant_description: Fixed 16 px negative ring (r_min, no organ scaling)
+    prompt_geometry: *id005
+- name: fixed_ring_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: fixed_ring
+      variant_description: Fixed 16 px negative ring (r_min, no organ scaling)
+    prompt_geometry: *id005
+- name: no_boundary_loss_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: no_boundary_loss
+      variant_description: 'alpha(t) = 1: CE + Dice only, no boundary term'
+    training: &id006
+      kervadec:
+        alpha_start: 1.0
+        alpha_end: 1.0
+- name: no_boundary_loss_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: no_boundary_loss
+      variant_description: 'alpha(t) = 1: CE + Dice only, no boundary term'
+    training: *id006
+- name: no_boundary_loss_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: no_boundary_loss
+      variant_description: 'alpha(t) = 1: CE + Dice only, no boundary term'
+    training: *id006
+- name: probe_disjoint_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: probe_disjoint
+      variant_description: Bandit probe excluded from checkpoint selection / early stopping
+    bandit: &id007
+      probe_exclusive: true
+- name: probe_disjoint_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: probe_disjoint
+      variant_description: Bandit probe excluded from checkpoint selection / early stopping
+    bandit: *id007
+- name: probe_disjoint_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: probe_disjoint
+      variant_description: Bandit probe excluded from checkpoint selection / early stopping
+    bandit: *id007
+- name: loco_case1_reference_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: loco_case1_reference
+      variant_description: 'Leave case1 out: BAP-MOS'
+    common: &id008
+      splits_subdir: splits_loco/heldout_case1
+- name: loco_case1_reference_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: loco_case1_reference
+      variant_description: 'Leave case1 out: BAP-MOS'
+    common: *id008
+- name: loco_case1_reference_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: loco_case1_reference
+      variant_description: 'Leave case1 out: BAP-MOS'
+    common: *id008
+- name: loco_case2_reference_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: loco_case2_reference
+      variant_description: 'Leave case2 out: BAP-MOS'
+    common: &id009
+      splits_subdir: splits_loco/heldout_case2
+- name: loco_case2_reference_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: loco_case2_reference
+      variant_description: 'Leave case2 out: BAP-MOS'
+    common: *id009
+- name: loco_case2_reference_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: loco_case2_reference
+      variant_description: 'Leave case2 out: BAP-MOS'
+    common: *id009
+- name: loco_case1_box_only_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: loco_case1_box_only
+      variant_description: 'Leave case1 out: box-only control'
+    common: &id010
+      splits_subdir: splits_loco/heldout_case1
+    bandit: &id011
+      arms:
+      - box
+- name: loco_case1_box_only_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: loco_case1_box_only
+      variant_description: 'Leave case1 out: box-only control'
+    common: *id010
+    bandit: *id011
+- name: loco_case1_box_only_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: loco_case1_box_only
+      variant_description: 'Leave case1 out: box-only control'
+    common: *id010
+    bandit: *id011
+- name: loco_case2_box_only_seed42
+  seed: 42
+  overrides:
+    ablation:
+      variant: loco_case2_box_only
+      variant_description: 'Leave case2 out: box-only control'
+    common: &id012
+      splits_subdir: splits_loco/heldout_case2
+    bandit: &id013
+      arms:
+      - box
+- name: loco_case2_box_only_seed43_rep2
+  seed: 43
+  overrides:
+    ablation:
+      variant: loco_case2_box_only
+      variant_description: 'Leave case2 out: box-only control'
+    common: *id012
+    bandit: *id013
+- name: loco_case2_box_only_seed44_rep3
+  seed: 44
+  overrides:
+    ablation:
+      variant: loco_case2_box_only
+      variant_description: 'Leave case2 out: box-only control'
+    common: *id012
+    bandit: *id013

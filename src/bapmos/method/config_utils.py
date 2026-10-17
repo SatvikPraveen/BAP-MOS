@@ -64,6 +64,8 @@ EXTERNAL_SUITE_DIRS: Dict[str, Path] = {
     "bapmos_sam": bladder_bapmos_experiments_dir() / "inner_loop" / "sam",
     "bapmos_medsam_outer_loop": bladder_bapmos_experiments_dir() / "outer_loop" / "medsam",
     "bapmos_medsam": bladder_bapmos_experiments_dir() / "inner_loop" / "medsam",
+    # Reviewer-response ablations / controls (selected/tpe of ``bapmos`` + overrides).
+    "bapmos_camera_ready": prostate_bapmos_experiments_dir().parent / "camera_ready",
 }
 
 
@@ -80,6 +82,7 @@ SUITE_BY_VERSION: Dict[str, str] = {
     "bapmos_sam": "bapmos_sam",
     "bapmos_medsam_outer_loop": "bapmos_medsam_outer_loop",
     "bapmos_medsam": "bapmos_medsam",
+    "bapmos_camera_ready": "bapmos_camera_ready",
 }
 
 # Removed pre-rename keys — do not silently remap (public API must stay unambiguous).
@@ -419,23 +422,29 @@ def apply_selected_hyperparameters(
     cfg: Dict[str, Any],
     suite_dir: str,
     dataset: str,
+    *,
+    selected_suite: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Merge ``selected/<dataset>.yaml`` when the suite uses Bayesian-selected params.
+
+    ``selected_suite`` (from ``ablation.selected_from_suite``) reads another suite's
+    selected file, so an ablation suite reuses the production winner unchanged.
 
     ``selection_meta`` is kept on ``cfg['meta']['selection']`` for traceability.
 
     Refuses ``generation: 0`` (placeholder) selected files unless
     ``BAPMOS_ALLOW_PLACEHOLDER_SELECTED=1``.
     """
-    if suite_dir not in SUITES_WITH_SELECTED_PARAMS:
+    source = selected_suite or suite_dir
+    if source not in SUITES_WITH_SELECTED_PARAMS:
         return cfg
     if parameter_source(cfg) != "bayesian_selected":
         return cfg
 
-    selected_subdir = resolve_selected_subdir(suite_dir)
-    path = selected_hyperparameters_path(suite_dir, dataset)
-    selected = load_selected_hyperparameters(suite_dir, dataset)
+    selected_subdir = resolve_selected_subdir(source)
+    path = selected_hyperparameters_path(source, dataset)
+    selected = load_selected_hyperparameters(source, dataset)
     if not selected:
         raise FileNotFoundError(
             f"bayesian_selected requires hyperparameters at {path}. "
@@ -523,7 +532,12 @@ def compose_config(version: str, dataset: str) -> Dict[str, Any]:
             override = load_suite_dataset_fragment(suite_dir, dataset)
             if override:
                 cfg = deep_merge(cfg, override)
-        cfg = apply_selected_hyperparameters(cfg, suite_dir, dataset)
+        cfg = apply_selected_hyperparameters(
+            cfg,
+            suite_dir,
+            dataset,
+            selected_suite=ver.get("ablation", {}).get("selected_from_suite"),
+        )
         cfg.setdefault("meta", {})
         cfg["meta"]["version"] = str(ver.get("ablation", {}).get("version", version))
         cfg["meta"]["dataset"] = ds.get("dataset", {}).get("name", dataset)
