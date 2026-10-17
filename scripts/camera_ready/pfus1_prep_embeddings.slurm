@@ -2,7 +2,7 @@
 #SBATCH --job-name=cr-pfembed
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=96G
-#SBATCH --time=06:00:00
+#SBATCH --time=02:00:00
 #
 # Shared PFUS1 prep (once, before PFUS1 jobs and before "prep.sh pin pfus1"): frozen SAM and
 # MedSAM embeddings for every PFUS1 frame, float32 so cached BAP-MOS runs see exactly the
