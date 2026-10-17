@@ -38,7 +38,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 
-from bapmos.method.bandit_policy import BlockScheduler, PerOrganBanditPolicy
+from bapmos.method.bandit_policy import BlockScheduler, build_prompt_policy
 from bapmos.method.config_utils import run_directory_layout
 from bapmos.method.paths import bapmos_method_test_output_dir_from_config, method_slug_from_config
 from bapmos.method.curriculum_reward import compute_gamma
@@ -57,12 +57,14 @@ from bapmos.method.evaluation_metrics import (
 )
 from bapmos.method.reward import (
     DEFAULT_HD95_LAMBDA,
+    REWARD_MODES,
     RewardMode,
+    dice_only_rewards,
     reward_threshold_label,
     rewards_from_validation_metrics,
     rewards_from_validation_msd,
 )
-from bapmos.method.prompt_geometry import build_prompts_for_slice
+from bapmos.method.prompt_geometry import build_prompts_for_slice, perturb_slice_prompts
 from bapmos.method.sam_model import FrozenSAMMultiOrgan
 from bapmos.losses.kervadec_style import DecoderLossComputer, DecoderLossConfig
 from bapmos.losses.loss_policy import force_bapmos_method_kervadec_loss
@@ -255,14 +257,16 @@ class BAPMOSTrainer:
         self.box_jitter_px = int(prompt_cfg.get("box_jitter_px", 2))
         self.ring_mode: str = str(prompt_cfg.get("ring_mode", "scale_organ"))
         self.ring_width_fixed: int = int(prompt_cfg.get("ring_width", 20))
+        # Test-time prompt noise (robustness export only; never set during training).
+        self.test_prompt_noise_px: int = 0
+        self.test_prompt_noise_seed: int = 0
 
         self.reward_mode: RewardMode = str(
             reward_cfg.get("mode", curriculum_cfg.get("mode", "composite_fixed_clip"))
         )  # type: ignore[assignment]
-        if self.reward_mode not in ("fixed_clip", "curriculum", "composite_fixed_clip"):
+        if self.reward_mode not in REWARD_MODES:
             raise ValueError(
-                "reward.mode must be 'fixed_clip', 'curriculum', or 'composite_fixed_clip', "
-                f"got {self.reward_mode!r}"
+                f"reward.mode must be one of {REWARD_MODES}, got {self.reward_mode!r}"
             )
         self.clip_max_mm = float(
             reward_cfg.get("clip_max_mm", curriculum_cfg.get("clip_max_mm", 20.0))
@@ -281,14 +285,18 @@ class BAPMOSTrainer:
             raise ValueError(
                 f"bandit.memory must be 'sliding' or 'cumulative', got {bandit_memory!r}"
             )
-        self.policy = PerOrganBanditPolicy(
-            organs=self.organ_keys,
+        # scope: per_organ (BAP-MOS), or the global / fixed-schedule ablations.
+        self.bandit_scope = str(bandit_cfg.get("scope", "per_organ"))
+        self.policy = build_prompt_policy(
+            self.bandit_scope,
+            self.organ_keys,
             arms=self.arms,
             window_size=int(bandit_cfg.get("window_size", 50)),
             warmup_blocks_per_arm=int(bandit_cfg.get("warmup_blocks_per_arm", 10)),
             min_pulls_per_arm=int(bandit_cfg.get("min_pulls_per_arm", 5)),
             seed=self.base_seed,
             memory=bandit_memory,  # type: ignore[arg-type]
+            fixed_weights=bandit_cfg.get("fixed_weights"),
         )
         self.scheduler = BlockScheduler(self.policy, block_size_batches=self.block_size)
 
@@ -574,6 +582,14 @@ class BAPMOSTrainer:
             ring_mode=self.ring_mode,
             ring_width_fixed=self.ring_width_fixed,
         )
+        if not train and self.test_prompt_noise_px > 0:
+            prompts = perturb_slice_prompts(
+                prompts,
+                self.test_prompt_noise_px,
+                mask_multi.shape[:2],
+                sample_id,
+                self.test_prompt_noise_seed,
+            )
         if not prompts:
             return None
 
@@ -606,6 +622,8 @@ class BAPMOSTrainer:
                 clip_max_mm=self.clip_max_mm,
                 hd95_lambda=self.hd95_lambda,
             )
+        if self.reward_mode == "dice_only":
+            return dice_only_rewards(organ_metrics)  # type: ignore[arg-type]
         organ_msds = {
             k: float(v["msd_mm"]) for k, v in organ_metrics.items() if np.isfinite(v["msd_mm"])
         }
@@ -1095,6 +1113,34 @@ def _overlay_runtime_speed_settings(dst: Dict[str, Any], src: Dict[str, Any]) ->
             dst_common[key] = src_common[key]
 
 
+def exclusive_val_loader(val_loader, probe_indices: np.ndarray):
+    """Val loader without the bandit-probe slices (disjoint probe / selection subsets).
+
+    With ``bandit.probe_exclusive: true`` the probe keeps driving bandit rewards, while
+    checkpoint selection and early stopping see only the remaining val slices.
+    """
+    from torch.utils.data import DataLoader, Subset
+
+    dataset = val_loader.dataset
+    probe = {int(i) for i in np.asarray(probe_indices).tolist()}
+    rest = [i for i in range(len(dataset)) if i not in probe]
+    if not rest:
+        raise ValueError("bandit.probe_exclusive leaves no validation slices for selection.")
+    logger.info(
+        "probe_exclusive: selection/early-stopping on %d val slices (probe %d excluded)",
+        len(rest),
+        len(probe),
+    )
+    return DataLoader(
+        Subset(dataset, rest),
+        batch_size=val_loader.batch_size,
+        shuffle=False,
+        num_workers=val_loader.num_workers,
+        collate_fn=val_loader.collate_fn,
+        pin_memory=val_loader.pin_memory,
+    )
+
+
 def run_training_job(
     cfg: Dict[str, Any],
     run_root: Optional[str] = None,
@@ -1210,6 +1256,8 @@ def run_training_job(
         organ_to_class, num_classes, data_root=common["data_root"]
     )
     trainer.init_val_probe(val_ds)
+    if bool(cfg.get("bandit", {}).get("probe_exclusive", False)):
+        val_loader = exclusive_val_loader(val_loader, trainer._validation_probe_indices)
 
     (run_dir / "config.json").write_text(json.dumps(cfg, indent=2, default=str), encoding="utf-8")
 

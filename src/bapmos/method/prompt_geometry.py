@@ -17,6 +17,10 @@ Randomness is deterministic per (sample_id, epoch) via ``stable_rng_from_id``.
 
 Asymmetric fallback: if point sampling fails (tiny or distorted organ), silently
 set ``effective_mode='box'`` so training never crashes on empty rings.
+
+Test-time robustness (:func:`perturb_organ_prompt`): every box edge and every point
+coordinate moves by an integer offset drawn uniformly from [-n, n] px. Offsets are
+seeded per (sample_id, n), so every method sees the same perturbed prompts.
 """
 
 from __future__ import annotations
@@ -292,6 +296,63 @@ def build_prompts_for_slice(
             out[organ_key] = prompt
 
     return out
+
+
+def perturb_organ_prompt(
+    prompt: OrganPrompts,
+    noise_px: int,
+    image_hw: tuple[int, int],
+    rng: np.random.Generator,
+) -> OrganPrompts:
+    """Shift each box edge and point coordinate by U{-n..n} px, clipped to the image."""
+    if noise_px <= 0:
+        return prompt
+    h, w = image_hw
+    n = int(noise_px)
+    box = prompt.box_xyxy
+    if box is not None:
+        dx0, dy0, dx1, dy1 = (int(v) for v in rng.integers(-n, n + 1, size=4))
+        x_min = int(np.clip(int(box[0]) + dx0, 0, w - 1))
+        y_min = int(np.clip(int(box[1]) + dy0, 0, h - 1))
+        x_max = int(np.clip(int(box[2]) + dx1, 0, w - 1))
+        y_max = int(np.clip(int(box[3]) + dy1, 0, h - 1))
+        # Keep a valid box: swap inverted edges, then enforce a 2 px minimum size.
+        x_min, x_max = min(x_min, x_max), max(x_min, x_max)
+        y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+        x_max = min(w - 1, max(x_max, x_min + 2))
+        y_max = min(h - 1, max(y_max, y_min + 2))
+        box = np.array([x_min, y_min, x_max, y_max], dtype=np.int64)
+    points = prompt.points_xy
+    if points is not None:
+        offsets = rng.integers(-n, n + 1, size=points.shape)
+        points = points + offsets
+        points[:, 0] = np.clip(points[:, 0], 0, w - 1)
+        points[:, 1] = np.clip(points[:, 1], 0, h - 1)
+    return OrganPrompts(
+        organ_key=prompt.organ_key,
+        mode=prompt.mode,
+        effective_mode=prompt.effective_mode,
+        box_xyxy=box,
+        points_xy=points,
+        labels=prompt.labels,
+    )
+
+
+def perturb_slice_prompts(
+    prompts: Mapping[str, OrganPrompts],
+    noise_px: int,
+    image_hw: tuple[int, int],
+    sample_id: str,
+    base_seed: int,
+) -> Dict[str, OrganPrompts]:
+    """Apply :func:`perturb_organ_prompt` to every organ with a per-(slice, n) RNG."""
+    if noise_px <= 0:
+        return dict(prompts)
+    rng = stable_rng_from_id(f"{sample_id}|noise{int(noise_px)}", base_seed)
+    return {
+        key: perturb_organ_prompt(prompt, noise_px, image_hw, rng)
+        for key, prompt in prompts.items()
+    }
 
 
 def present_organ_keys(
