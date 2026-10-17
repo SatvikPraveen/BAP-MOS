@@ -44,14 +44,41 @@ for exp in "${exps[@]}"; do
 done
 
 status=0
+trained=()
 for i in "${!pids[@]}"; do
   [[ -z "${pids[$i]}" ]] && continue
   if wait "${pids[$i]}"; then
-    touch "${RUN_ROOT:-runs/prostate/camera_ready}/${exps[$i]}/.train_done"
-    echo "pack: ${exps[$i]} done"
+    trained+=("${exps[$i]}")
+    echo "pack: ${exps[$i]} trained"
   else
     echo "pack: ${exps[$i]} FAILED (see ${CR_ROOT}/logs/run-${exps[$i]}.log)"
     status=1
   fi
+done
+
+# Export in the same allocation (TRUS suite only), then mark each run done. The keeper's
+# export lines require .train_done, so they only fire for exports this step did not finish.
+run_export() {  # <exp> <out> [extra args...]
+  local exp="$1" out="$2"; shift 2
+  [[ -f "${out}/sites.json" ]] && return 0
+  "${PY}" -m bapmos.method.run_test_inference \
+    --checkpoint "${RUN_ROOT:-runs/prostate/camera_ready}/${exp}/best_checkpoint.pth" \
+    --output_dir "${out}" --force-inference-output --viz-pdf-max 1000 "$@" \
+    >> "${CR_ROOT}/logs/run-${exp}.log" 2>&1 || echo "pack: export ${out} failed"
+}
+for exp in "${trained[@]}"; do
+  if [[ "${DATASET:-pooled}" == pooled ]]; then
+    io=inference_output/camera_ready
+    run_export "${exp}" "${io}/suite/${exp}"
+    if [[ "${exp}" == reference_* || "${exp}" == box_only_* ]]; then
+      for n in 5 10 20; do
+        run_export "${exp}" "${io}/noise${n}/${exp}" --prompt-noise-px "${n}"
+      done
+      unet="${io}/unet/unet_pooled_seed${exp##*_seed}"
+      [[ -f "${unet}/sites.json" ]] && run_export "${exp}" "${io}/auto_unet/${exp}" --prompt-mask-dir "${unet}"
+    fi
+  fi
+  touch "${RUN_ROOT:-runs/prostate/camera_ready}/${exp}/.train_done"
+  echo "pack: ${exp} done"
 done
 exit "${status}"
