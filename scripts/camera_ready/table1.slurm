@@ -44,8 +44,12 @@ case "${TASK}" in
   *) echo "unsupported TASK=${TASK}" >&2; exit 2 ;;
 esac
 
-start=$(date +%s)
-"${PY}" -m "${module}" "${args[@]}"
-echo "table1: ${name} trained in $(( $(date +%s) - start )) s"
+done_flag="${run_root}/${name}/.train_done"
+if [[ ! -f "${done_flag}" ]]; then
+  start=$(date +%s)
+  "${PY}" -m "${module}" "${args[@]}"
+  touch "${done_flag}"
+  echo "table1: ${name} trained in $(( $(date +%s) - start )) s"
+fi
 "${PY}" -m "${export_module}" --checkpoint "${run_root}/${name}/best_checkpoint.pth" \
   --output_dir "${out}" --viz-pdf-max 1000 --force-inference-output

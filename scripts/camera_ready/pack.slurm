@@ -16,7 +16,8 @@
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 : "${EXPS:?set EXPS=\"exp1 exp2 ...\"}"
 cr_preflight
-read -r -a exps <<< "${EXPS}"
+# Experiments separated by spaces or '+' (keeper plans cannot carry spaces in a value).
+read -r -a exps <<< "${EXPS//+/ }"
 threads=$(( ${SLURM_CPUS_PER_TASK:-16} / ${#exps[@]} ))
 (( threads < 1 )) && threads=1
 export OMP_NUM_THREADS=${threads} MKL_NUM_THREADS=${threads} OPENBLAS_NUM_THREADS=${threads}
@@ -26,6 +27,11 @@ fi
 
 pids=()
 for exp in "${exps[@]}"; do
+  if [[ -f "${RUN_ROOT:-runs/prostate/camera_ready}/${exp}/.train_done" ]]; then
+    echo "pack: ${exp} already done; skipping"
+    pids+=("")
+    continue
+  fi
   resume=()
   [[ -f "${RUN_ROOT:-runs/prostate/camera_ready}/${exp}/last_checkpoint.pth" ]] && resume=(--resume auto)
   log="${CR_ROOT}/logs/run-${exp}.log"
@@ -39,6 +45,7 @@ done
 
 status=0
 for i in "${!pids[@]}"; do
+  [[ -z "${pids[$i]}" ]] && continue
   if wait "${pids[$i]}"; then
     touch "${RUN_ROOT:-runs/prostate/camera_ready}/${exps[$i]}/.train_done"
     echo "pack: ${exps[$i]} done"

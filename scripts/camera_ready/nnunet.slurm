@@ -24,9 +24,13 @@ mkdir -p "${nnUNet_results}"
 name="nnunet_${DATASET}_${suffix}"
 out="inference_output/camera_ready/nnunet/${name}"
 
-cont=()
-[[ -f "${nnUNet_results}/${NN_DS}/nnUNetTrainerBapMosProtocol__nnUNetPlans__2d/fold_0/checkpoint_latest.pth" ]] && cont=(--c)
-"${NNBIN}/nnUNetv2_train" "${NN_ID}" 2d 0 -tr nnUNetTrainerBapMosProtocol "${cont[@]}"
+done_flag="${nnUNet_results}/.train_done"
+if [[ ! -f "${done_flag}" ]]; then
+  cont=()
+  [[ -f "${nnUNet_results}/${NN_DS}/nnUNetTrainerBapMosProtocol__nnUNetPlans__2d/fold_0/checkpoint_latest.pth" ]] && cont=(--c)
+  "${NNBIN}/nnUNetv2_train" "${NN_ID}" 2d 0 -tr nnUNetTrainerBapMosProtocol "${cont[@]}"
+  touch "${done_flag}"
+fi
 
 for site in "${NN_SITES[@]}"; do
   test_ds="${NN}/raw_test/${site}/${NN_DS}"

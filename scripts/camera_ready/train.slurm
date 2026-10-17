@@ -17,6 +17,10 @@ if [[ "${EXP}" == loco_* ]]; then
   "${PY}" -m bapmos.preprocess.prostate.create_loco_splits --check
 fi
 
+if [[ -f "${RUN_ROOT:-runs/prostate/camera_ready}/${EXP}/.train_done" ]]; then
+  echo "train: ${EXP} already done; nothing to do"
+  exit 0
+fi
 resume=()
 if [[ -f "${RUN_ROOT:-runs/prostate/camera_ready}/${EXP}/last_checkpoint.pth" ]]; then
   resume=(--resume auto)
