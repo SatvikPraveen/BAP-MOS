@@ -19,10 +19,15 @@ name="box_pfus1_${suffix}"
 run_root=runs/camera_ready_baselines/pfus1/box
 resume=()
 [[ -f "${run_root}/${name}/last_checkpoint.pth" ]] && resume=(--resume auto)
-"${PY}" -m bapmos.multiorgan.train_sam_multiorgan_decoder_box \
-  --data_root data/bladder/pfus1 --run_root "${run_root}" --run_name "${name}" --seed "${SEED}" \
-  --max_epochs 100 --patience 20 --batch_size 128 --box_jitter_px 2 --skip_test_eval \
-  --checkpoint-objective-metric ptv_kfold_msd --checkpoint-objective-organ Bladder "${resume[@]}"
+done_flag="${run_root}/${name}/.train_done"
+# Chained short jobs: a resubmission after training finished goes straight to export.
+if [[ ! -f "${done_flag}" ]]; then
+  "${PY}" -m bapmos.multiorgan.train_sam_multiorgan_decoder_box \
+    --data_root data/bladder/pfus1 --run_root "${run_root}" --run_name "${name}" --seed "${SEED}" \
+    --max_epochs 100 --patience 20 --batch_size 128 --box_jitter_px 2 --skip_test_eval \
+    --checkpoint-objective-metric ptv_kfold_msd --checkpoint-objective-organ Bladder "${resume[@]}"
+  touch "${done_flag}"
+fi
 "${PY}" -m bapmos.multiorgan.run_test_inference \
   --checkpoint "${run_root}/${name}/best_checkpoint.pth" \
   --output_dir "inference_output/camera_ready/box/${name}" \

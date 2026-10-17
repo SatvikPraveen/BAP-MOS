@@ -42,10 +42,15 @@ resume=()
 # Keep every prediction on TRUS (automatic-prompt runs); protocol default (10) on PFUS1.
 viz_max=1000
 [[ "${DATASET:-pooled}" == pfus1 ]] && viz_max=10
-"${PY}" -m bapmos.external_baselines.unet.train_multiclass \
-  --data_root "${data_root}" --run_root "${run_root}" --run_name "${name}" \
-  --seed "${SEED}" "${objective[@]}" \
-  --skip-test-after-train "${split_args[@]}" "${resume[@]}"
+done_flag="${run_root}/unet/${name}/.train_done"
+# Chained short jobs: a resubmission after training finished goes straight to export.
+if [[ ! -f "${done_flag}" ]]; then
+  "${PY}" -m bapmos.external_baselines.unet.train_multiclass \
+    --data_root "${data_root}" --run_root "${run_root}" --run_name "${name}" \
+    --seed "${SEED}" "${objective[@]}" \
+    --skip-test-after-train "${split_args[@]}" "${resume[@]}"
+  touch "${done_flag}"
+fi
 
 export_split=()
 [[ -n "${SPLITS:-}" ]] && export_split=(--splits-subdir "${SPLITS}")

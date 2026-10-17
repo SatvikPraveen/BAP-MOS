@@ -26,4 +26,5 @@ start=$(date +%s)
   --version "${VERSION:-bapmos_camera_ready}" --dataset "${DATASET:-pooled}" \
   --experiment "${EXP}" --run-name "${EXP}" \
   --no-wandb --skip-test "${resume[@]}"
+touch "${RUN_ROOT:-runs/prostate/camera_ready}/${EXP}/.train_done"
 echo "train: ${EXP} finished in $(( $(date +%s) - start )) s"

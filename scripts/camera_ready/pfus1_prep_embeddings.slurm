@@ -6,7 +6,9 @@
 #
 # Shared PFUS1 prep (once, before PFUS1 jobs and before "prep.sh pin pfus1"): frozen SAM and
 # MedSAM embeddings for every PFUS1 frame, float32 so cached BAP-MOS runs see exactly the
-# encoder outputs the on-the-fly baselines compute. --overwrite replaces any copied cache.
+# encoder outputs the on-the-fly baselines compute. Resumable: a resubmitted job skips frames
+# already written (writes are atomic); manifest.json, written last, marks the cache complete.
+# Build caches fresh on each cluster (never copy one in), so no stale cache is kept.
 #   bash scripts/camera_ready/submit.sh pfus1_prep_embeddings.slurm DATASET=pfus1 INIT=meta
 #   bash scripts/camera_ready/submit.sh pfus1_prep_embeddings.slurm DATASET=pfus1 INIT=medsam
 # (one small job per encoder; without INIT both are built in one job)
@@ -19,5 +21,5 @@ for init in ${INIT:-meta medsam}; do
   fi
   "${PY}" -m bapmos.preprocess.bladder.precompute_sam_embeddings \
     --data_root data/bladder/pfus1 --init "${init}" --sam_checkpoint "${ckpt}" \
-    --output_dir "${out}" --splits train,val,test --dtype float32 --device cuda --overwrite
+    --output_dir "${out}" --splits train,val,test --dtype float32 --device cuda
 done

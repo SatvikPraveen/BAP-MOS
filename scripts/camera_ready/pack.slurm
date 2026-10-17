@@ -40,6 +40,7 @@ done
 status=0
 for i in "${!pids[@]}"; do
   if wait "${pids[$i]}"; then
+    touch "${RUN_ROOT:-runs/prostate/camera_ready}/${exps[$i]}/.train_done"
     echo "pack: ${exps[$i]} done"
   else
     echo "pack: ${exps[$i]} FAILED (see ${CR_ROOT}/logs/run-${exps[$i]}.log)"

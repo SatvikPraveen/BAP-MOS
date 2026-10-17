@@ -8,6 +8,7 @@ matching :class:`segment_anything.Sam` and the optimization trainer's image path
 from __future__ import annotations
 
 import argparse
+import os
 import csv
 import json
 import logging
@@ -75,7 +76,11 @@ def _save_payload(
     payload: Dict[str, object],
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(payload, path)
+    # Write then rename, so a job stopped mid-write never leaves a truncated file that a
+    # resumed run would skip.
+    tmp = path.with_name(f"{path.name}.tmp")
+    torch.save(payload, tmp)
+    os.replace(tmp, path)
 
 
 def _load_existing_meta(
