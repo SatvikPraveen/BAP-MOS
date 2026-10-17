@@ -214,3 +214,76 @@ def test_exclusive_val_loader_drops_probe_slices():
     assert seen == [0, 2, 3, 5, 6, 8, 9]
     with pytest.raises(ValueError):
         exclusive_val_loader(loader, np.arange(10))
+
+
+def _write_per_slice(path, rows):
+    import pandas as pd
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def _slice_row(image_id, organ, hd95, valid=True):
+    return {
+        "image_id": image_id,
+        "organ": organ,
+        "hd95_mm": hd95 if valid else None,
+        "msd_mm": hd95 / 3 if valid else None,
+        "dice": 0.9 if valid else 0.0,
+        "gt_empty": False,
+        "valid_boundary": valid,
+    }
+
+
+def test_paired_stats_pairs_slices_and_counts_invalid(tmp_path):
+    from bapmos.results.paired_stats import paired_table, seed_mean
+
+    ids = [f"s{i}.png" for i in range(8)]
+    for site in ("case1", "case2"):
+        _write_per_slice(
+            tmp_path / "a" / site / "metrics" / "per_slice_metrics.csv",
+            [_slice_row(f"{site}_{i}", "PTV", 1.0 + 0.1 * k) for k, i in enumerate(ids)],
+        )
+        rows_b = [_slice_row(f"{site}_{i}", "PTV", 2.0 + 0.1 * k) for k, i in enumerate(ids)]
+        rows_b[0] = _slice_row(f"{site}_{ids[0]}", "PTV", 0.0, valid=False)
+        _write_per_slice(tmp_path / "b" / site / "metrics" / "per_slice_metrics.csv", rows_b)
+    table = paired_table(seed_mean([tmp_path / "a"]), seed_mean([tmp_path / "b"]), "A", "B")
+    row = table[(table.organ == "PTV") & (table.metric == "hd95_mm")].iloc[0]
+    assert row.n_pairs == 14  # 16 slices minus the 2 invalid in B
+    assert row.b_invalid == 2 and row.a_invalid == 0
+    assert row.median_diff_a_minus_b == pytest.approx(-1.0)
+    assert row.a_better_frac == 1.0
+    assert row.p_wilcoxon < 0.01
+
+
+def test_holm_adjustment():
+    from bapmos.results.paired_stats import holm
+
+    assert holm([0.01, 0.04, 0.03]) == pytest.approx([0.03, 0.06, 0.06])
+    out = holm([float("nan"), 0.02])
+    assert np.isnan(out[0]) and out[1] == pytest.approx(0.02)
+
+
+def test_bandit_preferences_from_checkpoint(tmp_path):
+    import torch
+
+    from bapmos.method.bandit_policy import BlockScheduler, PerOrganBanditPolicy
+    from bapmos.results.bandit_preferences import preference_rows, summarize
+
+    policy = PerOrganBanditPolicy(["rectum", "ptv1"], warmup_blocks_per_arm=1, seed=0)
+    sched = BlockScheduler(policy, block_size_batches=1)
+    for _ in range(6):
+        arms = sched.begin_block(["rectum"])
+        sched.end_block({"rectum": 0.9 if arms["rectum"] == "point" else 0.1})
+    run = tmp_path / "run_seed42"
+    run.mkdir()
+    torch.save({"bandit_state": policy.export_state(), "epoch_index": 3}, run / "best_checkpoint.pth")
+    import pandas as pd
+
+    df = pd.DataFrame(preference_rows(run))
+    rectum = df[df.organ == "rectum"].set_index("arm")
+    assert rectum.loc["point", "test_arm"]
+    assert rectum["N_a"].sum() == 6
+    assert df[df.organ == "ptv1"]["never_rewarded"].all()
+    summary = summarize(df)
+    assert set(summary.columns) >= {"organ", "arm", "Q_a_mean", "test_arm_runs"}
