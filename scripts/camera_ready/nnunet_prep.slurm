@@ -36,5 +36,5 @@ for site in "${NN_SITES[@]}"; do
     --dataset_id "${NN_ID}" --dataset_name "${NN_NAME}" "${split_args[@]}" --test_images_only
 done
 
-( cd "${NN}" && find raw raw_test -type f | LC_ALL=C sort | xargs sha256sum ) > "${manifest}"
+( cd "${NN}" && find raw raw_test -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum ) > "${manifest}"
 echo "nnunet_prep: pinned $(wc -l < "${manifest}") files -> ${manifest}"

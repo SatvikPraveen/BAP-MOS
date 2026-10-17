@@ -32,7 +32,7 @@ case "${1:-}" in
       echo "prep: ${out} exists; use FORCE=1 to re-pin" >&2
       exit 1
     fi
-    find "${dir}" -type f | LC_ALL=C sort | xargs sha256sum > "${out}"
+    find "${dir}" -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "${out}"
     echo "prep: pinned $(wc -l < "${out}") files → ${out}"
     ;;
   check)
