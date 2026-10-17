@@ -8,8 +8,8 @@
 #   train+val export -> nnUNet_raw, plan_and_preprocess -> nnUNet_preprocessed, one private
 #   test folder per test site under ${NN}/raw_test/<site>/ (so replicates never rewrite the
 #   shared raw dataset), and NNUNET_<dataset>_SHA256.txt pinning the raw inputs.
-#   sbatch --export=ALL,DATASET=pooled scripts/camera_ready/nnunet_prep.slurm
-#   sbatch --export=ALL,DATASET=pfus1  scripts/camera_ready/nnunet_prep.slurm
+#   bash scripts/camera_ready/submit.sh nnunet_prep.slurm DATASET=pooled
+#   bash scripts/camera_ready/submit.sh nnunet_prep.slurm DATASET=pfus1
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 source "${REPO}/scripts/camera_ready/_nnunet_env.sh"
 cr_preflight

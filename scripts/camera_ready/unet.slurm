@@ -5,9 +5,9 @@
 #SBATCH --time=24:00:00
 #
 # Train and export one U-Net baseline (experiments/prostate/baselines/unet/README.md recipe).
-#   sbatch --export=ALL,SEED=42 scripts/camera_ready/unet.slurm                 # pooled split
-#   sbatch --export=ALL,SEED=42,SPLITS=splits_loco/heldout_case2 scripts/camera_ready/unet.slurm
-#   sbatch --export=ALL,SEED=42,DATASET=pfus1 scripts/camera_ready/unet.slurm   # PFUS1 schedule
+#   bash scripts/camera_ready/submit.sh unet.slurm SEED=42                 # pooled split
+#   bash scripts/camera_ready/submit.sh unet.slurm SEED=42 SPLITS=splits_loco/heldout_case2
+#   bash scripts/camera_ready/submit.sh unet.slurm SEED=42 DATASET=pfus1   # PFUS1 schedule
 # The export keeps every prediction PNG: predictions/multiclass/*_pred_ids.png are the
 # prompt source for the fully automatic BAP-MOS evaluation (export.slurm PROMPT_MASK_DIR).
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"

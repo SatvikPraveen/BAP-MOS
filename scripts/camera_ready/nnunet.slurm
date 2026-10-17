@@ -8,7 +8,7 @@
 # trainer), then per-site prediction and native-grid export. nnU-Net has no seed option;
 # REP=1|2|3 are independent runs with their own nnUNet_results, named seed42/43/44 for
 # collation like every other row.
-#   sbatch --export=ALL,DATASET=pooled,REP=1 scripts/camera_ready/nnunet.slurm
+#   bash scripts/camera_ready/submit.sh nnunet.slurm DATASET=pooled REP=1
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 source "${REPO}/scripts/camera_ready/_nnunet_env.sh"
 : "${REP:?set REP=1|2|3}"

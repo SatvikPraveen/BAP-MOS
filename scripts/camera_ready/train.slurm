@@ -5,7 +5,7 @@
 #SBATCH --time=24:00:00
 #
 # Train one camera-ready experiment (experiments/prostate/camera_ready/version.yaml):
-#   sbatch --export=ALL,EXP=global_seed42 scripts/camera_ready/train.slurm
+#   bash scripts/camera_ready/submit.sh train.slurm EXP=global_seed42
 # Resumes from last_checkpoint.pth when the run folder already has one.
 # PFUS1: also set VERSION=bapmos_camera_ready_pfus1_<sam|medsam> DATASET=pfus1
 #        RUN_ROOT=runs/bladder/camera_ready/<sam|medsam>.

@@ -6,7 +6,7 @@
 #
 # One Table I cell (decoder-only vs full-model fine-tuning) on the pooled split, then its
 # native-grid test export:
-#   sbatch --export=ALL,TASK=multi,PROMPT=box,SCOPE=full,SEED=42 scripts/camera_ready/table1.slurm
+#   bash scripts/camera_ready/submit.sh table1.slurm TASK=multi PROMPT=box SCOPE=full SEED=42
 # TASK=multi|single (single = PTV only), PROMPT=box|points, SCOPE=decoder|full, SEED=42|43|44.
 # Fixed-prompt SAM trainers with their own protocol (CE + Dice, fixed 20 px ring for points,
 # 2 px train box jitter); the cell differs from its neighbours only in TASK/PROMPT/SCOPE.

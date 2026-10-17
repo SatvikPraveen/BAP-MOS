@@ -7,7 +7,7 @@
 # Shared prep step 2 of 3 (after the LOCO lists, before pinning): frozen SAM embeddings for
 # every pooled slice, written once and checked against on-the-fly encoding.
 #   bash scripts/camera_ready/prep.sh loco      # login node
-#   sbatch scripts/camera_ready/prep_embeddings.slurm
+#   bash scripts/camera_ready/submit.sh prep_embeddings.slurm
 #   bash scripts/camera_ready/prep.sh pin prostate   # login node, after this job succeeds
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 "${PY}" -m bapmos.preprocess.prostate.precompute_sam_embeddings \

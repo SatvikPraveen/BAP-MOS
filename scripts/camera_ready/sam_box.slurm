@@ -7,7 +7,7 @@
 # SAM (box) baseline on PFUS1 (docs/RUNNING.md recipe: 100 epochs, patience 20, batch 128)
 # with the 2 px box jitter every box-prompted camera-ready method uses. On TRUS the SAM (box)
 # row is the Table I multi-organ / box / decoder cell (table1.slurm).
-#   sbatch --export=ALL,SEED=42 scripts/camera_ready/sam_box.slurm
+#   bash scripts/camera_ready/submit.sh sam_box.slurm SEED=42
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 : "${SEED:?set SEED=42|43|44}"
 cr_preflight

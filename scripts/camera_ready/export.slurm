@@ -5,8 +5,8 @@
 #SBATCH --time=04:00:00
 #
 # Test export for one trained BAP-MOS-family checkpoint, scored on the native grid.
-#   sbatch --export=ALL,CKPT=runs/.../best_checkpoint.pth,OUT=inference_output/camera_ready/<name> \
-#     scripts/camera_ready/export.slurm
+#   bash scripts/camera_ready/submit.sh export.slurm \
+#     CKPT=runs/.../best_checkpoint.pth OUT=inference_output/camera_ready/<name>
 # Optional: NOISE=<px> (prompt perturbation), PROMPT_MASK_DIR=<dir of *_pred_ids.png>,
 # SPLITS=<splits_subdir>. Every prediction PNG is kept (VIZ_MAX defaults to 1000) so
 # per-slice statistics and prompt-source runs can reuse them.

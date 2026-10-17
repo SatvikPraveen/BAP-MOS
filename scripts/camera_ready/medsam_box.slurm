@@ -6,8 +6,8 @@
 #
 # MedSAM (box) baseline: MedSAM-initialised SAM ViT-B, decoder fine-tuned with fixed box
 # prompts (docs/RUNNING.md recipe). Box jitter is 2 px, the same for every box-prompted method.
-#   sbatch --export=ALL,SEED=42 scripts/camera_ready/medsam_box.slurm               # TRUS
-#   sbatch --export=ALL,SEED=42,DATASET=pfus1 scripts/camera_ready/medsam_box.slurm # PFUS1
+#   bash scripts/camera_ready/submit.sh medsam_box.slurm SEED=42               # TRUS
+#   bash scripts/camera_ready/submit.sh medsam_box.slurm SEED=42 DATASET=pfus1 # PFUS1
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 : "${SEED:?set SEED=42|43|44}"
 cr_preflight
