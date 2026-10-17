@@ -32,7 +32,10 @@ case "${1:-}" in
       echo "prep: ${out} exists; use FORCE=1 to re-pin" >&2
       exit 1
     fi
-    find "${dir}" -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "${out}"
+    # Embedding caches are excluded: they are built in place by their own jobs and carry their
+    # own completion manifest (manifest.json), so the pin covers the source data only.
+    find "${dir}" -path '*/sam_embeddings' -prune -o -type f -print0 \
+      | LC_ALL=C sort -z | xargs -0 sha256sum > "${out}"
     echo "prep: pinned $(wc -l < "${out}") files → ${out}"
     ;;
   check)
