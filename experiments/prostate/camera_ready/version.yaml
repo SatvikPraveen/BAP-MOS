@@ -31,6 +31,10 @@ common:
   patience: 40
   num_workers: 0
   pixel_spacing: [0.159072, 0.159072]
+  # Frozen-encoder embeddings computed once (bapmos.preprocess.prostate.precompute_sam_embeddings);
+  # prostate training has no image augmentation, so the cache equals on-the-fly encoding.
+  use_cached_image_embeddings: true
+  image_embedding_dir: data/prostate/pooled/sam_vit_b_embeddings
 
 # Default hyperparameters = searched_clip_scale_organ enqueue baseline.
 # After outer-loop export, prefer compose (defaults to selected/tpe) or
@@ -72,7 +76,9 @@ wandb:
 
 evaluation:
   run_test_after_train: false
-  eval_train_metrics: true
+  # The per-epoch train-set metrics pass is logging only (nothing selects on it); off for
+  # every camera-ready run to halve epoch time.
+  eval_train_metrics: false
   # Production keeps checkpoints; only outer_loop HPO deletes trial .pth after scoring.
   cleanup_checkpoints_after_train: false
   objective_metric: ptv_kfold_msd

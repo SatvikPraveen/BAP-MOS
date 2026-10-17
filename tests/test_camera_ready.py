@@ -182,7 +182,10 @@ def test_camera_ready_suite_uses_paper_tpe_configuration():
         strip = lambda d: {k: v for k, v in d.items() if k not in keys}
         assert strip(base[block]) == strip(prod[block]), block
     assert base["training"] == prod["training"]
-    assert base["common"] == prod["common"]
+    cache_keys = {"use_cached_image_embeddings", "image_embedding_dir"}
+    assert {k: v for k, v in base["common"].items() if k not in cache_keys} == prod["common"]
+    assert base["common"]["use_cached_image_embeddings"] is True
+    assert base["evaluation"]["eval_train_metrics"] is False
 
     names = [e["name"] for e in base["experiments"]]
     assert len(names) == len(set(names))
