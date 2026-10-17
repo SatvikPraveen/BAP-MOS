@@ -1,6 +1,7 @@
-# GAIVI fallback for PFUS1 (inactive until items are pulled back from Anvil/Delta).
-# Before enabling an item here, cancel it on its cluster and remove it from that plan,
-# so no item ever runs twice. Same jobs and markers as plans/{anvil,delta}_pfus1.txt.
+# GAIVI PFUS1 plan: every item pulled back from Anvil/Delta (cancelled there, commented out
+# in plans/{anvil,delta}_pfus1.txt), so no item runs twice. Same jobs and markers as those.
+# data/bladder/pfus1/sam_embeddings links to /YES/satvikpraveen/... (the /data quota cannot
+# hold the two 66 GB caches).
 cr-gpf-emb-sam | pfus1_prep_embeddings.slurm | DATASET=pfus1 INIT=meta | data/bladder/pfus1/sam_embeddings/sam_vit_b/manifest.json | ../DATA_SHA256_pfus1.txt
 cr-gpf-bm-sam-42 | train.slurm | VERSION=bapmos_camera_ready_pfus1_sam DATASET=pfus1 RUN_ROOT=runs/bladder/camera_ready/sam EXP=pfus1_seed42 | runs/bladder/camera_ready/sam/pfus1_seed42/.train_done | data/bladder/pfus1/sam_embeddings/sam_vit_b/manifest.json
 cr-gpf-bmx-sam-42 | export.slurm | DATASET=pfus1 CKPT=runs/bladder/camera_ready/sam/pfus1_seed42/best_checkpoint.pth OUT=inference_output/camera_ready/bapmos_pfus1_sam/pfus1_seed42 VIZ_MAX=10 | inference_output/camera_ready/bapmos_pfus1_sam/pfus1_seed42/metrics/summary_metrics.csv | runs/bladder/camera_ready/sam/pfus1_seed42/.train_done
