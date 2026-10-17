@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=cr-nnunet
-#SBATCH --cpus-per-task=12
-#SBATCH --mem=96G
+#SBATCH --cpus-per-task=32
+#SBATCH --mem=160G
 #SBATCH --time=08:00:00
 #
 # One nnU-Net replicate (2D, fold 0 = the repository's train/val split, BAP-MOS protocol
 # trainer), then per-site prediction and native-grid export. nnU-Net has no seed option;
 # REP=1|2|3 are independent runs with their own nnUNet_results, named seed42/43/44 for
 # collation like every other row.
-#   bash scripts/camera_ready/submit.sh nnunet.slurm DATASET=pooled REP=1
+#   bash scripts/camera_ready/submit.sh nnunet.slurm DATASET=pooled REP=1 GPUS=4
+# Batch 128 (protocol parity) does not fit one GPU on TRUS (640x768 patches: >95 GB), so
+# GPUS=N trains with nnU-Net's DDP: the global batch of 128 is split across the N GPUs and
+# batch Dice gathers tp/fp/fn over all ranks, so the loss equals that of a single batch 128.
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 source "${REPO}/scripts/camera_ready/_nnunet_env.sh"
 : "${REP:?set REP=1|2|3}"
+GPUS="${GPUS:-1}"
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 cr_preflight
 ( cd "${NN}" && sha256sum --quiet -c "${CR_ROOT}/NNUNET_${DATASET}_SHA256.txt" ) \
   || { echo "nnunet: raw inputs differ from NNUNET_${DATASET}_SHA256.txt; refusing" >&2; exit 3; }
@@ -28,7 +33,7 @@ done_flag="${nnUNet_results}/.train_done"
 if [[ ! -f "${done_flag}" ]]; then
   cont=()
   [[ -f "${nnUNet_results}/${NN_DS}/nnUNetTrainerBapMosProtocol__nnUNetPlans__2d/fold_0/checkpoint_latest.pth" ]] && cont=(--c)
-  "${NNBIN}/nnUNetv2_train" "${NN_ID}" 2d 0 -tr nnUNetTrainerBapMosProtocol "${cont[@]}"
+  "${NNBIN}/nnUNetv2_train" "${NN_ID}" 2d 0 -tr nnUNetTrainerBapMosProtocol -num_gpus "${GPUS}" "${cont[@]}"
   touch "${done_flag}"
 fi
 

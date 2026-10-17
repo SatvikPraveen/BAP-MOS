@@ -7,6 +7,7 @@ NNPY="${NNBIN}/python"
 NN="${CR_ROOT}/nnunet/${DATASET:?set DATASET=pooled|pfus1}"
 export nnUNet_raw="${NN}/raw" nnUNet_preprocessed="${NN}/preprocessed"
 export nnUNet_compile=f nnUNet_wandb_enabled=0
+export NNUNET_BATCH_SIZE=128  # global batch (split across GPUs under DDP)
 case "${DATASET}" in
   pooled)
     NN_DATA_ROOT=data/prostate/pooled; NN_ID=505; NN_NAME=BapMosPooledTrainVal
