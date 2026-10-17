@@ -2,6 +2,7 @@
 # Submit one camera-ready job with this cluster's site settings. Usage:
 #   bash scripts/camera_ready/submit.sh <job.slurm> KEY=VALUE ...
 #   bash scripts/camera_ready/submit.sh pack.slurm EXPS="global_seed42 global_seed43_rep2"
+#   SBATCH_ARGS="--cpus-per-task=24 --mem=120G" bash scripts/camera_ready/submit.sh pack.slurm ...
 # Job scripts hold only portable resources (CPUs, memory, time); partition, account, QOS,
 # GPU request and log path are set here. Every job logs its GPU in preflight.
 #   GAIVI: any modern GPU on Contributors/general (1080Ti, TitanRTX and the A40 nodes
@@ -22,4 +23,6 @@ case "$(hostname -f)" in
     site=(--partition=ai --account=cis260833-ai --gres=gpu:1) ;;
   *) echo "submit.sh: unknown cluster $(hostname -f)" >&2; exit 2 ;;
 esac
-sbatch "${site[@]}" --output="${cr_root}/logs/%x-%j.out" --export="${exports}" "${here}/${job}"
+extra=()
+read -r -a extra <<< "${SBATCH_ARGS:-}"
+sbatch "${site[@]}" "${extra[@]}" --output="${cr_root}/logs/%x-%j.out" --export="${exports}" "${here}/${job}"
