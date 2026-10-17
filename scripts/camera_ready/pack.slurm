@@ -2,7 +2,7 @@
 #SBATCH --job-name=cr-pack
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=96G
-#SBATCH --time=24:00:00
+#SBATCH --time=03:00:00
 #
 # Several camera-ready suite experiments sharing one GPU. With cached embeddings a
 # decoder-only run leaves most of a large GPU idle, so packing raises throughput; each run

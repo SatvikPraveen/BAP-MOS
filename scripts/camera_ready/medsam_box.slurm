@@ -2,7 +2,7 @@
 #SBATCH --job-name=cr-medsam
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --time=24:00:00
+#SBATCH --time=04:00:00
 #
 # MedSAM (box) baseline: MedSAM-initialised SAM ViT-B, decoder fine-tuned with fixed box
 # prompts (docs/RUNNING.md recipe). Box jitter is 2 px, the same for every box-prompted method.

@@ -2,7 +2,7 @@
 #SBATCH --job-name=cr-table1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=48G
-#SBATCH --time=24:00:00
+#SBATCH --time=02:00:00
 #
 # One Table I cell (decoder-only vs full-model fine-tuning) on the pooled split, then its
 # native-grid test export:

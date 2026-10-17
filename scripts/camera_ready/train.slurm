@@ -2,7 +2,7 @@
 #SBATCH --job-name=cr-train
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --time=24:00:00
+#SBATCH --time=02:00:00
 #
 # Train one camera-ready experiment (experiments/prostate/camera_ready/version.yaml):
 #   bash scripts/camera_ready/submit.sh train.slurm EXP=global_seed42

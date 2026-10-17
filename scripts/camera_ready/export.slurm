@@ -2,7 +2,7 @@
 #SBATCH --job-name=cr-export
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --time=04:00:00
+#SBATCH --time=01:00:00
 #
 # Test export for one trained BAP-MOS-family checkpoint, scored on the native grid.
 #   bash scripts/camera_ready/submit.sh export.slurm \

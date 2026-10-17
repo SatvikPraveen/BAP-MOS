@@ -2,7 +2,7 @@
 #SBATCH --job-name=cr-nnunet
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=96G
-#SBATCH --time=48:00:00
+#SBATCH --time=08:00:00
 #
 # One nnU-Net replicate (2D, fold 0 = the repository's train/val split, BAP-MOS protocol
 # trainer), then per-site prediction and native-grid export. nnU-Net has no seed option;

@@ -5,6 +5,9 @@
 #   SBATCH_ARGS="--cpus-per-task=24 --mem=120G" bash scripts/camera_ready/submit.sh pack.slurm ...
 # Job scripts hold only portable resources (CPUs, memory, time); partition, account, QOS,
 # GPU request and log path are set here. Every job logs its GPU in preflight.
+# Time limits are short (2-3x the measured run time) so jobs backfill instead of holding
+# the queue; every job resumes from its last checkpoint, so a timed-out job is resubmitted.
+# Longer cells (e.g. Table I full model): SBATCH_ARGS="--time=04:00:00".
 #   GAIVI: any modern GPU on Contributors/general (1080Ti, TitanRTX and the A40 nodes
 #          GPU43/GPU44 excluded; the A40 nodes fail CUDA init with the cu129 build)
 #   Anvil: one A100 on the ai partition, account cis260833-ai
