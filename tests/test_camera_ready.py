@@ -287,3 +287,21 @@ def test_bandit_preferences_from_checkpoint(tmp_path):
     assert df[df.organ == "ptv1"]["never_rewarded"].all()
     summary = summarize(df)
     assert set(summary.columns) >= {"organ", "arm", "Q_a_mean", "test_arm_runs"}
+
+
+def test_load_prompt_mask_finds_site_file_and_refuses_missing(tmp_path):
+    import cv2
+
+    from bapmos.method.run_test_inference import load_prompt_mask
+
+    site = tmp_path / "case1" / "predictions" / "multiclass"
+    site.mkdir(parents=True)
+    mask = np.zeros((10, 12), dtype=np.uint8)
+    mask[2:5, 3:7] = 2
+    cv2.imwrite(str(site / "MR.1.2_pred_ids.png"), mask)
+    assert np.array_equal(load_prompt_mask(tmp_path, "MR.1.2.png", (10, 12)), mask)
+    assert np.array_equal(load_prompt_mask(site, "MR.1.2.png", (10, 12)), mask)
+    with pytest.raises(FileNotFoundError):
+        load_prompt_mask(tmp_path, "MR.9.9.png", (10, 12))
+    with pytest.raises(ValueError):
+        load_prompt_mask(tmp_path, "MR.1.2.png", (11, 12))

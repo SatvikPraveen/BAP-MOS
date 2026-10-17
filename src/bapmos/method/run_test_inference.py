@@ -189,15 +189,25 @@ def run_bapmos_test_export(
 def load_prompt_mask(mask_dir: Path, filename: str, shape: tuple) -> np.ndarray:
     """Predicted label map ``<stem>_pred_ids.png`` used as the prompt source for one slice.
 
-    Raises when the file is missing or its shape differs from the GT grid, so a
-    missing prediction is never silently replaced by the GT mask.
+    ``mask_dir`` is either a ``predictions/multiclass`` folder or an export root whose
+    sites hold ``<site>/predictions/multiclass/``. Raises when the file is missing, found
+    more than once, or its shape differs from the GT grid, so a missing prediction is
+    never silently replaced by the GT mask.
     """
     from bapmos.inference_output.export_bundle import _batch_filename_stem
 
-    path = Path(mask_dir) / f"{_batch_filename_stem(filename)}_pred_ids.png"
+    name = f"{_batch_filename_stem(filename)}_pred_ids.png"
+    hits = [Path(mask_dir) / name] if (Path(mask_dir) / name).is_file() else sorted(
+        Path(mask_dir).glob(f"*/predictions/multiclass/{name}")
+    )
+    if len(hits) != 1:
+        raise FileNotFoundError(
+            f"Prompt mask for {filename}: expected one {name} under {mask_dir}, found {len(hits)}"
+        )
+    path = hits[0]
     mask = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     if mask is None:
-        raise FileNotFoundError(f"Prompt mask missing for {filename}: {path}")
+        raise FileNotFoundError(f"Prompt mask unreadable for {filename}: {path}")
     if mask.ndim == 3:
         mask = mask[..., 0]
     if tuple(mask.shape) != tuple(shape[:2]):
