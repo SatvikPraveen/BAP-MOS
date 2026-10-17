@@ -8,10 +8,11 @@
 # trainer), then per-site prediction and native-grid export. nnU-Net has no seed option;
 # REP=1|2|3 are independent runs with their own nnUNet_results, named seed42/43/44 for
 # collation like every other row.
-#   bash scripts/camera_ready/submit.sh nnunet.slurm DATASET=pooled REP=1 GPUS=4
-# Batch 128 (protocol parity) does not fit one GPU on TRUS (640x768 patches: >95 GB), so
-# GPUS=N trains with nnU-Net's DDP: the global batch of 128 is split across the N GPUs and
-# batch Dice gathers tp/fp/fn over all ranks, so the loss equals that of a single batch 128.
+#   bash scripts/camera_ready/submit.sh nnunet.slurm DATASET=pooled REP=1
+#   bash scripts/camera_ready/submit.sh nnunet.slurm DATASET=pfus1 REP=1 GPUS=4
+# Batch sizes follow the paper-era runs (_nnunet_env.sh): TRUS 1 on one GPU; PFUS1 a global
+# 128 under nnU-Net's DDP (GPUS=4, 32 per GPU), where batch Dice gathers tp/fp/fn over all
+# ranks, so the loss equals that of a single batch 128.
 source "${CR_ROOT:-/data/satvikpraveen/camera_ready}/BAP-MOS/scripts/camera_ready/_env.sh"
 source "${REPO}/scripts/camera_ready/_nnunet_env.sh"
 : "${REP:?set REP=1|2|3}"

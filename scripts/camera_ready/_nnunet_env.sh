@@ -7,17 +7,18 @@ NNPY="${NNBIN}/python"
 NN="${CR_ROOT}/nnunet/${DATASET:?set DATASET=pooled|pfus1}"
 export nnUNet_raw="${NN}/raw" nnUNet_preprocessed="${NN}/preprocessed"
 export nnUNet_compile=f nnUNet_wandb_enabled=0
-export NNUNET_BATCH_SIZE=128  # global batch (split across GPUs under DDP)
 case "${DATASET}" in
   pooled)
     NN_DATA_ROOT=data/prostate/pooled; NN_ID=505; NN_NAME=BapMosPooledTrainVal
     NN_SITES=(simulation case1 case2)
-    export NNUNET_MAX_EPOCHS=300 NNUNET_PATIENCE=40
+    # Paper-era TRUS nnU-Net: batch 1 on one GPU (640x768 patches).
+    export NNUNET_MAX_EPOCHS=300 NNUNET_PATIENCE=40 NNUNET_BATCH_SIZE=1
     ;;
   pfus1)
     NN_DATA_ROOT=data/bladder/pfus1; NN_ID=503; NN_NAME=BapMosPfus1TrainVal
     NN_SITES=(test)
-    export NNUNET_CHECKPOINT_OBJECTIVE_ORGAN=Bladder
+    # Paper-era PFUS1 nnU-Net: global batch 128 under DDP (4 GPUs x 32); submit with GPUS=4.
+    export NNUNET_CHECKPOINT_OBJECTIVE_ORGAN=Bladder NNUNET_BATCH_SIZE=128
     ;;
   *) echo "unsupported DATASET=${DATASET}" >&2; exit 2 ;;
 esac
