@@ -364,3 +364,19 @@ experiments:
       variant_description: 'Leave case2 out: box-only control'
     common: *id012
     bandit: *id013
+- name: medsam_reference_seed42
+  seed: 42
+  overrides: &medsam_overrides
+    ablation:
+      variant: medsam_reference
+      variant_description: BAP-MOS with MedSAM init (paper TPE vector, MedSAM embedding cache)
+    common:
+      sam_checkpoint: models/medsam/medsam_vit_b.pth
+      sam_init: medsam
+      image_embedding_dir: data/prostate/pooled/medsam_vit_b_embeddings
+- name: medsam_reference_seed43_rep2
+  seed: 43
+  overrides: *medsam_overrides
+- name: medsam_reference_seed44_rep3
+  seed: 44
+  overrides: *medsam_overrides

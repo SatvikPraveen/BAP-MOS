@@ -20,8 +20,9 @@ case "${1:-}" in
       exit 1
     fi
     "${PY}" -m bapmos.preprocess.prostate.create_loco_splits --check
-    emb=data/prostate/pooled/sam_vit_b_embeddings/manifest.json
-    [[ -f "${emb}" ]] || { echo "prep: ${emb} missing; run prep_embeddings.slurm first" >&2; exit 1; }
+    for emb in data/prostate/pooled/{sam,medsam}_vit_b_embeddings/manifest.json; do
+      [[ -f "${emb}" ]] || { echo "prep: ${emb} missing; run prep_embeddings.slurm first" >&2; exit 1; }
+    done
     find data/prostate -type f | LC_ALL=C sort | xargs sha256sum > "${CR_ROOT}/DATA_SHA256.txt"
     echo "prep: pinned $(wc -l < "${CR_ROOT}/DATA_SHA256.txt") files → ${CR_ROOT}/DATA_SHA256.txt"
     ;;

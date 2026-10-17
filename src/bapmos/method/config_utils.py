@@ -66,6 +66,10 @@ EXTERNAL_SUITE_DIRS: Dict[str, Path] = {
     "bapmos_medsam": bladder_bapmos_experiments_dir() / "inner_loop" / "medsam",
     # Reviewer-response ablations / controls (paper TPE configuration + overrides).
     "bapmos_camera_ready": prostate_bapmos_experiments_dir().parent / "camera_ready",
+    "bapmos_camera_ready_pfus1_sam": bladder_bapmos_experiments_dir().parent / "camera_ready" / "sam",
+    "bapmos_camera_ready_pfus1_medsam": bladder_bapmos_experiments_dir().parent
+    / "camera_ready"
+    / "medsam",
 }
 
 
@@ -83,6 +87,8 @@ SUITE_BY_VERSION: Dict[str, str] = {
     "bapmos_medsam_outer_loop": "bapmos_medsam_outer_loop",
     "bapmos_medsam": "bapmos_medsam",
     "bapmos_camera_ready": "bapmos_camera_ready",
+    "bapmos_camera_ready_pfus1_sam": "bapmos_camera_ready_pfus1_sam",
+    "bapmos_camera_ready_pfus1_medsam": "bapmos_camera_ready_pfus1_medsam",
 }
 
 # Removed pre-rename keys — do not silently remap (public API must stay unambiguous).
@@ -119,6 +125,8 @@ SUITES_WITH_SELECTED_PARAMS = frozenset(
         "bapmos_sam",
         "bapmos_medsam",
         "bapmos_camera_ready",
+        "bapmos_camera_ready_pfus1_sam",
+        "bapmos_camera_ready_pfus1_medsam",
     }
 )
 
@@ -130,6 +138,8 @@ SUITE_DEFAULT_SELECTED_SUBDIR: Dict[str, str] = {
     "bapmos_sam": "selected",
     "bapmos_medsam": "selected",
     "bapmos_camera_ready": "selected/paper_tpe",
+    "bapmos_camera_ready_pfus1_sam": "selected/paper_tpe",
+    "bapmos_camera_ready_pfus1_medsam": "selected/paper_tpe",
 }
 
 # Prostate SAM search-method ablations that share the ``bapmos`` suite but must not

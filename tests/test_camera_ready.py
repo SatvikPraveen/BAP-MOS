@@ -217,6 +217,13 @@ def test_camera_ready_suite_uses_paper_tpe_configuration():
     assert nbl["training"]["kervadec"]["alpha_start"] == 1.0
     assert nbl["training"]["kervadec"]["alpha_end"] == 1.0
 
+    med = load_composed_config(
+        version="bapmos_camera_ready", dataset="pooled", experiment_name="medsam_reference_seed44_rep3"
+    )
+    assert med["common"]["sam_init"] == "medsam"
+    assert med["common"]["image_embedding_dir"].endswith("medsam_vit_b_embeddings")
+    assert med["prompt_geometry"] == base["prompt_geometry"] and med["experiment_seed"] == 44
+
     loco = load_composed_config(
         version="bapmos_camera_ready", dataset="pooled", experiment_name="loco_case2_box_only_seed44_rep3"
     )
@@ -370,3 +377,27 @@ def test_finetune_scope_grads_and_checkpoint_parts():
         apply_finetune_scope(model, "encoder")
     with pytest.raises(KeyError):
         load_sam_model_state(other, {"image_encoder": state["image_encoder"]})
+
+
+@pytest.mark.parametrize(
+    "backbone,trial,clip,r_min,window,block",
+    [("sam", 18, 20.0, 6, 50, 50), ("medsam", 35, 25.0, 5, 85, 25)],
+)
+def test_camera_ready_pfus1_suites_use_paper_era_search(backbone, trial, clip, r_min, window, block):
+    from bapmos.method.config_utils import compose_config, load_composed_config
+
+    cfg = compose_config(f"bapmos_camera_ready_pfus1_{backbone}", "pfus1")
+    prod = compose_config(f"bapmos_{backbone}", "pfus1")
+    assert cfg["meta"]["selection"]["trial_number"] == trial
+    assert cfg["reward"]["clip_max_mm"] == clip
+    assert cfg["prompt_geometry"]["r_min"] == r_min
+    assert cfg["bandit"]["window_size"] == window and cfg["bandit"]["block_size_batches"] == block
+    # Every box-prompted camera-ready method uses a 2 px train-time box jitter.
+    assert cfg["prompt_geometry"]["box_jitter_px"] == 2
+    assert cfg["run_root"] == f"runs/bladder/camera_ready/{backbone}"
+    assert cfg["common"] == prod["common"]
+    assert cfg["training"] == prod["training"]
+    run = load_composed_config(
+        version=f"bapmos_camera_ready_pfus1_{backbone}", dataset="pfus1", experiment_name="pfus1_seed43_rep2"
+    )
+    assert run["experiment_seed"] == 43

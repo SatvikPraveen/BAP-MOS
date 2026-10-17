@@ -14,6 +14,12 @@ the largest absolute difference to the stored embedding; the job fails if it exc
 
     python -m bapmos.preprocess.prostate.precompute_sam_embeddings \\
       --out-dir data/prostate/pooled/sam_vit_b_embeddings --device cuda
+    python -m bapmos.preprocess.prostate.precompute_sam_embeddings --init medsam \\
+      --sam-checkpoint models/medsam/medsam_vit_b.pth \\
+      --out-dir data/prostate/pooled/medsam_vit_b_embeddings --device cuda
+
+MedSAM and SAM encoders differ, so each backbone has its own cache; the trainer refuses a
+pack whose ``checkpoint`` name does not match its own.
 """
 
 from __future__ import annotations
@@ -43,6 +49,7 @@ def main(argv: List[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--out-dir", required=True)
     p.add_argument("--sam-checkpoint", default="models/sam_base/sam_vit_b_01ec64.pth")
+    p.add_argument("--init", default="sam", choices=("sam", "medsam"), help="Encoder weights")
     p.add_argument("--device", default="cuda")
     p.add_argument("--verify", type=int, default=8, help="Slices re-encoded to check the cache")
     p.add_argument("--tol", type=float, default=1e-4)
@@ -52,7 +59,7 @@ def main(argv: List[str] | None = None) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     device = torch.device(args.device)
-    model = FrozenSAMMultiOrgan(args.sam_checkpoint, init="sam").to(device).eval()
+    model = FrozenSAMMultiOrgan(args.sam_checkpoint, init=args.init).to(device).eval()
     ckpt_name = Path(args.sam_checkpoint).name
 
     seen: dict = {}
@@ -93,6 +100,7 @@ def main(argv: List[str] | None = None) -> int:
     manifest = {
         "slices": len(seen),
         "checkpoint": ckpt_name,
+        "init": args.init,
         "dtype": "float32",
         "device": torch.cuda.get_device_name(device) if device.type == "cuda" else str(device),
         "torch": torch.__version__,
