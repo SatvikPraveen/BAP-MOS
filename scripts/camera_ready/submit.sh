@@ -8,10 +8,10 @@
 # Time limits are short (2-3x the measured run time) so jobs backfill instead of holding
 # the queue; every job resumes from its last checkpoint, so a timed-out job is resubmitted.
 # Longer cells (e.g. Table I full model): SBATCH_ARGS="--time=04:00:00".
-#   GAIVI: any modern GPU on nopreempt/YES/Contributors/general (higher partition tiers
+#   GAIVI: any modern GPU on YES/Contributors/general (higher partition tiers
 #          first; 1080Ti, TitanRTX and the A40 nodes
-#          GPU43/GPU44 excluded; the A40 nodes fail CUDA init with the cu129 build; GPU49
-#          excluded after uncorrectable ECC errors)
+#          GPU43/GPU44 and the A100 node GPU2 excluded: their drivers fail cu129 kernels;
+#          GPU49 excluded after uncorrectable ECC errors)
 #   Anvil: one A100 on the ai partition, account cis260833-ai
 #   Delta: one A100 on gpuA100x4, account biak-delta-gpu
 # TRUS (clinical) jobs run on GAIVI only; Anvil and Delta take PFUS1 jobs.
@@ -28,8 +28,8 @@ if [[ ! "$(hostname -f)" =~ gaivi|^GPU ]] && [[ "${exports}" != *DATASET=pfus1* 
 fi
 case "$(hostname -f)" in
   *gaivi*|GPU*)
-    site=(--partition=nopreempt,YES,Contributors,general --qos=maxjobs50 --gres=gpu:1
-          --exclude=GPU3,GPU4,GPU6,GPU8,GPU9,GPU22,GPU42,GPU43,GPU44,GPU49) ;;
+    site=(--partition=YES,Contributors,general --qos=maxjobs50 --gres=gpu:1
+          --exclude=GPU2,GPU3,GPU4,GPU6,GPU8,GPU9,GPU22,GPU42,GPU43,GPU44,GPU49) ;;
   *anvil*)
     site=(--partition=ai --account=cis260833-ai --gres=gpu:1) ;;
   *delta*|dt-*)

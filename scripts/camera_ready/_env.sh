@@ -50,5 +50,7 @@ cr_preflight() {
   echo "preflight: data manifest ok ($(wc -l < "${manifest}") files, ${manifest##*/})"
   echo "preflight: commit $(git -C "${REPO}" rev-parse --short HEAD)" \
     "$(git -C "${REPO}" status --porcelain --untracked-files=no | wc -l) modified tracked files"
-  "${PY}" -c "import torch; print('preflight: torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')"
+  # Run real kernels: some nodes report CUDA available but their driver fails cu129 kernels.
+  "${PY}" -c "import torch; print('preflight: torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else ''); x=torch.randn(2,3,64,64,device='cuda'); torch.nn.functional.conv2d(x, torch.randn(4,3,3,3,device='cuda')).sum().item(); print('preflight: cuda kernels ok')" \
+    || { echo "preflight: CUDA kernels fail on $(hostname -s); exclude this node" >&2; exit 4; }
 }
