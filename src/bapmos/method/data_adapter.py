@@ -177,13 +177,24 @@ def iter_test_split_datasets(
     """
     Yield ``(label, MultiOrganDataset)`` for held-out test export.
 
-    - Pooled prostate: one dataset per ``site_tests/<site>/`` (label = site name).
+    - Pooled prostate: one dataset per ``site_tests/<site>/`` (label = site name), or
+      for ``splits_loco/heldout_<cohort>`` the held-out cohort's ``test.txt``.
     - Otherwise: a single dataset from ``<splits_subdir>/test.txt`` (label = ``"test"``).
     """
     from bapmos.multiorgan.dataset_multi_organ import MultiOrganDataset
     from bapmos.paths import is_pooled_prostate_training_root, list_pooled_site_test_names
 
     root = resolve_path(data_root)
+    loco = Path(str(splits_subdir))
+    if is_pooled_prostate_training_root(root) and loco.parts[:1] == ("splits_loco",):
+        # Leave-one-cohort-out: the held-out cohort's full list replaces site_tests/.
+        label = loco.name.removeprefix("heldout_")
+        yield label, MultiOrganDataset(
+            str(root),
+            split="test",
+            splits_subdir=str(splits_subdir),
+        )
+        return
     if is_pooled_prostate_training_root(root):
         sites = list_pooled_site_test_names(root)
         if not sites:
@@ -225,7 +236,7 @@ def build_test_dataloader(
         datasets = []
         for label, _base_ds in iter_test_split_datasets(data_root, splits_subdir=splits_subdir):
             # Rebuild with embedding dir (iter yields datasets without cache paths).
-            if label == "test":
+            if label == "test" or Path(str(splits_subdir)).parts[:1] == ("splits_loco",):
                 datasets.append(
                     MultiOrganDataset(
                         str(root),
