@@ -10,7 +10,8 @@
 # nothing here rebuilds shared data. All caches and temp files stay under CR_ROOT.
 set -euo pipefail
 
-CR_ROOT="${CR_ROOT:-/data/satvikpraveen/camera_ready}"
+# Default: the folder that holds this clone (works on every cluster; submit.sh sets it too).
+CR_ROOT="${CR_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 REPO="${CR_ROOT}/BAP-MOS"
 PY="${CR_ROOT}/env/bin/python"
 export PYTHONPATH="${REPO}/src${PYTHONPATH:+:$PYTHONPATH}"
