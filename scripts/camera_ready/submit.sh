@@ -9,10 +9,10 @@
 # the queue; every job resumes from its last checkpoint, so a timed-out job is resubmitted.
 # Longer cells (e.g. Table I full model): SBATCH_ARGS="--time=04:00:00".
 # GPUS=N (one node) requests N GPUs instead of one; nnunet.slurm then trains with DDP.
-#   GAIVI: any modern GPU on YES/Contributors/general (higher partition tiers
-#          first; 1080Ti, TitanRTX and the A40 nodes
-#          GPU43/GPU44 and the A100 node GPU2 excluded: their drivers fail cu129 kernels;
-#          GPU49 excluded after uncorrectable ECC errors)
+#   GAIVI: only nodes that have run camera-ready jobs cleanly: GPU48 (H100), GPU52 (A6000),
+#          GPU53 (L40S), GPU54 (6000Ada), GPU56/GPU57 (RTX PRO 6000). Every other node is
+#          excluded: GPU2/GPU43/GPU44 drivers fail cu129 kernels, GPU49 had uncorrectable
+#          ECC errors, 1080Ti/TitanRTX are too old, and the rest are untested.
 #   Anvil: one A100 on the ai partition, account cis260833-ai
 #   Delta: one A100 on gpuA100x4, account biak-delta-gpu
 # TRUS (clinical) jobs run on GAIVI only; Anvil and Delta take PFUS1 jobs.
@@ -31,7 +31,7 @@ fi
 case "$(hostname -f)" in
   *gaivi*|GPU*)
     site=(--partition=YES,Contributors,general --qos=maxjobs50 --gres=gpu:${gpus}
-          --exclude=GPU2,GPU3,GPU4,GPU6,GPU8,GPU9,GPU22,GPU42,GPU43,GPU44,GPU49) ;;
+          --exclude=GPU1,GPU2,GPU3,GPU4,GPU6,GPU8,GPU9,GPU22,GPU42,GPU43,GPU44,GPU45,GPU46,GPU47,GPU49,GPU50,GPU51,GPU55) ;;
   *anvil*)
     site=(--partition=ai --account=cis260833-ai --gres=gpu:${gpus}) ;;
   *delta*|dt-*)
