@@ -1,8 +1,8 @@
 # Camera-ready (reviewer-response) suite: controls and ablations of the BAP-MOS inner loop.
 #
 # Every variant starts from the production inner loop (experiments/prostate/bapmos/
-# inner_loop/version.yaml + its selected/tpe winner, unchanged) and changes one thing
-# through its experiment ``overrides``. Three seeds per variant (docs/SEEDS.md).
+# inner_loop/version.yaml) with the paper's TPE trial-61 parameters (selected/paper_tpe/)
+# and changes one thing through its experiment ``overrides``. Three seeds per variant (docs/SEEDS.md).
 #
 #   python -m bapmos.method.bap_mos_trainer --version bapmos_camera_ready \
 #     --dataset pooled --experiment global_seed42 --run-name global_seed42
@@ -16,8 +16,7 @@ ablation:
   version: bapmos_camera_ready
   id: camera_ready
   parameter_source: bayesian_selected
-  # Reuse the production TPE winner (experiments/prostate/bapmos/inner_loop/selected/tpe).
-  selected_from_suite: bapmos
+  # Paper configuration (TPE trial 61): selected/paper_tpe/pooled.yaml in this suite.
   description: "Reviewer-response controls and ablations on the BAP-MOS inner loop"
 
 run_root: runs/prostate/camera_ready
@@ -197,23 +196,23 @@ experiments:
   overrides:
     ablation:
       variant: fixed_ring
-      variant_description: Fixed 16 px negative ring (r_min, no organ scaling)
+      variant_description: Fixed 10 px negative ring (r_min, no organ scaling)
     prompt_geometry: &id005
       ring_mode: fixed
-      ring_width: 16
+      ring_width: 10
 - name: fixed_ring_seed43_rep2
   seed: 43
   overrides:
     ablation:
       variant: fixed_ring
-      variant_description: Fixed 16 px negative ring (r_min, no organ scaling)
+      variant_description: Fixed 10 px negative ring (r_min, no organ scaling)
     prompt_geometry: *id005
 - name: fixed_ring_seed44_rep3
   seed: 44
   overrides:
     ablation:
       variant: fixed_ring
-      variant_description: Fixed 16 px negative ring (r_min, no organ scaling)
+      variant_description: Fixed 10 px negative ring (r_min, no organ scaling)
     prompt_geometry: *id005
 - name: no_boundary_loss_seed42
   seed: 42

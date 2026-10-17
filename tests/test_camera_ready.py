@@ -160,15 +160,29 @@ def test_loco_lists_hold_out_whole_cohort():
         loco_lists(cohorts, "case3")
 
 
-def test_camera_ready_suite_reuses_production_selected_params():
+def test_camera_ready_suite_uses_paper_tpe_configuration():
     from bapmos.method.config_utils import compose_config, load_composed_config
 
     base = compose_config("bapmos_camera_ready", "pooled")
     prod = compose_config("bapmos", "pooled")
-    for block in ("reward", "prompt_geometry", "bandit", "training"):
-        assert base[block] == prod[block], block
+    # Paper TPE trial 61: (tau, alpha, r_min, W, K) = (26, 0.108, 10, 50, 70).
+    assert base["meta"]["selection"]["trial_number"] == 61
+    assert base["reward"]["clip_max_mm"] == 26.0
+    assert base["prompt_geometry"]["alpha"] == pytest.approx(0.10884662160748368)
+    assert base["prompt_geometry"]["r_min"] == 10
+    assert base["bandit"]["window_size"] == 50
+    assert base["bandit"]["block_size_batches"] == 70
     assert base["run_root"] == "runs/prostate/camera_ready"
-    assert base["meta"]["selection"]["trial_number"] == prod["meta"]["selection"]["trial_number"]
+    # Everything but the five searched parameters matches the production inner loop.
+    for block, keys in (
+        ("reward", {"clip_max_mm"}),
+        ("prompt_geometry", {"alpha", "r_min"}),
+        ("bandit", {"window_size", "block_size_batches"}),
+    ):
+        strip = lambda d: {k: v for k, v in d.items() if k not in keys}
+        assert strip(base[block]) == strip(prod[block]), block
+    assert base["training"] == prod["training"]
+    assert base["common"] == prod["common"]
 
     names = [e["name"] for e in base["experiments"]]
     assert len(names) == len(set(names))
@@ -179,15 +193,20 @@ def test_camera_ready_suite_reuses_production_selected_params():
         version="bapmos_camera_ready", dataset="pooled", experiment_name="reference_seed42"
     )
     for block in ("reward", "prompt_geometry", "bandit", "training", "common"):
-        assert ref[block] == prod[block], block
+        assert ref[block] == base[block], block
 
     glob = load_composed_config(
         version="bapmos_camera_ready", dataset="pooled", experiment_name="global_seed43_rep2"
     )
     assert glob["bandit"]["scope"] == "global"
     assert glob["experiment_seed"] == 43
-    # Only the overridden key changes.
-    assert {k: v for k, v in glob["bandit"].items() if k != "scope"} == prod["bandit"]
+    assert {k: v for k, v in glob["bandit"].items() if k != "scope"} == base["bandit"]
+
+    ring = load_composed_config(
+        version="bapmos_camera_ready", dataset="pooled", experiment_name="fixed_ring_seed42"
+    )
+    assert ring["prompt_geometry"]["ring_mode"] == "fixed"
+    assert ring["prompt_geometry"]["ring_width"] == base["prompt_geometry"]["r_min"]
 
     nbl = load_composed_config(
         version="bapmos_camera_ready", dataset="pooled", experiment_name="no_boundary_loss_seed42"

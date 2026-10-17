@@ -18,8 +18,14 @@ the README tables or `selected/`.
 | Per-organ prompt preferences (R3 Q4, R2[3]) | Q/N per organ per seed | `bapmos.results.bandit_preferences` |
 
 The suite is `experiments/prostate/camera_ready/version.yaml` (`--version bapmos_camera_ready`):
-the production inner loop plus its `selected/tpe` winner, one override per variant, seeds
+the production inner loop with the paper's TPE configuration, one override per variant, seeds
 42/43/44. `reference_*` is the unchanged method and is the row every ablation is compared to.
+
+The paper reports TPE trial 61, (τ, α, r_min, W, K) = (26, 0.108, 10, 50, 70), from the archived
+study `bapmos_stage1_pooled_ptv_kfold_sclip` (111 completed trials). `main`'s
+`experiments/prostate/bapmos/inner_loop/selected/tpe/` holds a later study's trial 52 instead.
+The suite therefore carries the paper's vector in its own `selected/paper_tpe/pooled.yaml` and
+leaves `main`'s `selected/` unchanged.
 
 ## Layout on the cluster
 
@@ -62,5 +68,5 @@ ${CR_ROOT}/                       default /data/satvikpraveen/camera_ready
 - Slices within a cohort are correlated, so Wilcoxon p-values are optimistic.
 - With GT prompts, an organ absent from the prompt mask is never predicted; with predicted
   prompts, a missed organ stays missed. `paired_stats` reports these as invalid counts.
-- `fixed_ring` uses r = 16 px (the selected r_min): the organ-scaled ring exceeds it for most
-  slices of two organs (median 24–26 px) and rarely for the other two.
+- `fixed_ring` uses r = 10 px (the paper's r_min): the organ-scaled ring exceeds it on 89% and
+  97% of slices for two organs (median 22–23 px) and rarely for the other two.
