@@ -21,6 +21,7 @@ from bapmos.inference_output.site_export import (
     resolve_torch_device,
 )
 from bapmos.metrics.baseline_validation_metrics import multiclass_pred_uint8_from_logits
+from bapmos.multiorgan.finetune_scope import load_sam_model_state
 from bapmos.paths import resolve_under_project
 from bapmos.train.training_taxonomy import get_baseline_taxonomy_profile
 
@@ -96,10 +97,11 @@ def run_multiorgan_sam_test_export(
         ckpt = torch.load(checkpoint, map_location=trainer.device, weights_only=False)
     except TypeError:
         ckpt = torch.load(checkpoint, map_location=trainer.device)
-    md = ckpt.get("model_state", {}).get("mask_decoder")
-    if md is None:
+    model_state = ckpt.get("model_state") or {}
+    if "mask_decoder" not in model_state:
         raise KeyError(f"No model_state.mask_decoder in {checkpoint}")
-    trainer.model.mask_decoder.load_state_dict(md)
+    # Full-model (Table I) checkpoints also carry encoder weights.
+    load_sam_model_state(trainer.model, model_state)
     trainer.model.eval()
 
     taxonomy = get_baseline_taxonomy_profile(data_root)

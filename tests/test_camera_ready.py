@@ -324,3 +324,46 @@ def test_load_prompt_mask_finds_site_file_and_refuses_missing(tmp_path):
         load_prompt_mask(tmp_path, "MR.9.9.png", (10, 12))
     with pytest.raises(ValueError):
         load_prompt_mask(tmp_path, "MR.1.2.png", (11, 12))
+
+
+def test_finetune_scope_grads_and_checkpoint_parts():
+    import torch
+
+    from bapmos.multiorgan.finetune_scope import (
+        apply_finetune_scope,
+        encoder_grad,
+        load_sam_model_state,
+        sam_model_state,
+    )
+
+    class TinySam(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.image_encoder = torch.nn.Linear(2, 2)
+            self.prompt_encoder = torch.nn.Linear(2, 2)
+            self.mask_decoder = torch.nn.Linear(2, 2)
+
+    model = TinySam()
+    apply_finetune_scope(model, "decoder")
+    assert not any(p.requires_grad for p in model.image_encoder.parameters())
+    assert all(p.requires_grad for p in model.mask_decoder.parameters())
+    assert set(sam_model_state(model, "decoder")) == {"mask_decoder"}
+    with encoder_grad("decoder", True):
+        assert not torch.is_grad_enabled()
+
+    apply_finetune_scope(model, "full")
+    assert all(p.requires_grad for p in model.parameters())
+    with encoder_grad("full", True):
+        assert torch.is_grad_enabled()
+    with encoder_grad("full", False):
+        assert not torch.is_grad_enabled()
+    state = sam_model_state(model, "full")
+    assert set(state) == {"image_encoder", "prompt_encoder", "mask_decoder"}
+
+    other = TinySam()
+    load_sam_model_state(other, state)
+    assert torch.equal(other.image_encoder.weight, model.image_encoder.weight)
+    with pytest.raises(ValueError):
+        apply_finetune_scope(model, "encoder")
+    with pytest.raises(KeyError):
+        load_sam_model_state(other, {"image_encoder": state["image_encoder"]})
