@@ -8,6 +8,7 @@ matching :class:`segment_anything.Sam` and the optimization trainer's image path
 from __future__ import annotations
 
 import argparse
+import os
 import csv
 import json
 import logging
@@ -75,7 +76,11 @@ def _save_payload(
     payload: Dict[str, object],
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(payload, path)
+    # Write then rename, so a job stopped mid-write never leaves a truncated file that a
+    # resumed run would skip.
+    tmp = path.with_name(f"{path.name}.tmp")
+    torch.save(payload, tmp)
+    os.replace(tmp, path)
 
 
 def _load_existing_meta(
@@ -166,6 +171,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Comma-separated split names (must match ``{split}.txt`` files).",
     )
     p.add_argument("--device", type=str, default="cuda")
+    p.add_argument(
+        "--shard",
+        type=str,
+        default=None,
+        help="I/N: write only every N-th embedding starting at I (no manifest); "
+        "a final run without --shard skips existing files and writes the manifest.",
+    )
     p.add_argument(
         "--batch_size",
         type=int,
@@ -261,14 +273,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     n_written = 0
     n_skipped = 0
 
-    for split_name, sample_id, img_path, flat in jobs:
+    shard_i, shard_n = (0, 1)
+    if args.shard:
+        shard_i, shard_n = (int(v) for v in args.shard.split("/"))
+    for job_idx, (split_name, sample_id, img_path, flat) in enumerate(jobs):
+        if job_idx % shard_n != shard_i:
+            continue
         split_counts[split_name] += 1
         out_pt = out_dir / f"{flat}.pt"
 
-        image = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+        # Read exactly as MultiOrganDataset does (grayscale, replicated to 3 channels): PFUS1
+        # PNGs are stored as RGB with unequal channels, and every model must see one input.
+        image = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
         if image is None:
             raise IOError(f"Failed to read image: {img_path}")
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         original_size = (int(image_rgb.shape[0]), int(image_rgb.shape[1]))
 
         if out_pt.is_file() and not args.overwrite:
@@ -342,6 +361,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
         )
 
+    if args.shard:
+        logger.info("Shard %s done: written=%d skipped=%d (manifest left to the final run)", args.shard, n_written, n_skipped)
+        return 0
+
     csv_path = out_dir / "manifest.csv"
     fieldnames = [
         "sample_id",
@@ -372,6 +395,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "splits": split_totals,
         "embedding_dtype": args.dtype,
         "image_encoder_frozen": True,
+        "image_read": "grayscale_to_rgb",
         "num_written_this_run": n_written,
         "num_skipped_existing": n_skipped,
         "data_root": str(data_root),
