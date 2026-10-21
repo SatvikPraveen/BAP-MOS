@@ -1,0 +1,33 @@
+# Paper-era PFUS1 configuration: TPE trial 35 of the archived bapmos_medsam_stage1 study,
+# copied unchanged from the archive's configs/bapmos/medsam/stage2/selected/pfus1.yaml;
+# study_db names the archived study (not shipped with this repository).
+selection_meta:
+  study_name: bapmos_medsam_stage1_pfus1_bladder_kfold_sclip
+  study_db: optuna_studies/bapmos_medsam_stage1/pfus1_bladder_kfold_sclip.db
+  trial_number: 35
+  objective: bladder_kfold_val_msd_px
+  metric_note: "PTV k-fold mean MSD (5-fold, full-res). Search: BO-searched fixed\
+    \ clip \u03C4 + organ-scale ring (v6.7)"
+  value: 13.517453745861422
+  exported_at: '2026-07-03T21:34:51.567186+00:00'
+  generation: 1
+  search_method: tpe
+  hpo_suite: bapmos_bo_medsam
+  params:
+    clip_max_mm: 25
+    alpha: 0.05246491378028371
+    r_min: 5
+    window_size: 85
+    block_size_batches: 25
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 25.0
+  hd95_lambda: 3.0
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.05246491378028371
+  r_min: 5
+bandit:
+  memory: sliding
+  window_size: 85
+  block_size_batches: 25
