@@ -5,6 +5,16 @@ native GT grid, where every method is scored (``bapmos.metrics.evaluation_grid``
 
 Pooled prostate uses ``site_tests/<site>/test.txt`` (no global ``test.txt``).
 Each site is exported under ``<output_dir>/<site>/``.
+
+Prompt-source options (robustness / fully automatic evaluation):
+
+- ``--prompt-noise-px n``: perturb every box edge and point by U{-n..n} px
+  (``prompt_geometry.perturb_slice_prompts``; same offsets for every method).
+- ``--prompt-noise-mode loose``: instead move every box edge outward by U{0..n} px
+  (a box drawn larger than the organ; points unchanged).
+- ``--prompt-mask-dir DIR``: build prompts from another model's predicted label maps
+  (``DIR/<stem>_pred_ids.png`` on the native grid, e.g. a U-Net export's
+  ``predictions/multiclass/``) instead of the GT mask. Scoring still uses the GT.
 """
 
 from __future__ import annotations
@@ -12,9 +22,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import cv2
 import numpy as np
 import torch
 
+from bapmos.inference_output.prompt_log import write_prompt_log
 from bapmos.evaluation.test_panels import distance_unit_short
 from bapmos.inference_output.pfus1_defaults import export_viz_kwargs_for_data_root
 from bapmos.inference_output.protocol import require_primary_inference_seed_run
@@ -39,6 +51,10 @@ def run_bapmos_test_export(
     viz_per_patient_max: int | None = None,
     viz_pdf_max: int | None = None,
     force_inference_output: bool = False,
+    prompt_noise_px: int = 0,
+    prompt_noise_seed: int = 0,
+    prompt_mask_dir: Path | None = None,
+    prompt_noise_mode: str = "uniform",
 ) -> None:
     """Export stratified test predictions, metrics and panels for one trained checkpoint.
 
@@ -92,6 +108,14 @@ def run_bapmos_test_export(
         trainer.policy.load_state(ckpt["bandit_state"])
 
     test_arms = trainer.policy.get_best_arms_per_organ()
+    trainer.test_prompt_noise_px = int(prompt_noise_px)
+    trainer.test_prompt_noise_seed = int(prompt_noise_seed)
+    trainer.test_prompt_noise_mode = str(prompt_noise_mode)
+    trainer.test_prompt_log = {} if prompt_noise_px > 0 else None
+    if prompt_mask_dir is not None:
+        prompt_mask_dir = resolve_under_project(prompt_mask_dir)
+        if not prompt_mask_dir.is_dir():
+            raise FileNotFoundError(f"--prompt-mask-dir not found: {prompt_mask_dir}")
     taxonomy = get_baseline_taxonomy_profile(data_root)
     unit = distance_unit_short(taxonomy.taxonomy_name)
 
@@ -112,9 +136,12 @@ def run_bapmos_test_export(
             cand = emb_dir / f"{fn}.pt"
             if cand.is_file():
                 emb_path = str(cand)
+        prompt_mask = mask_multi
+        if prompt_mask_dir is not None:
+            prompt_mask = load_prompt_mask(prompt_mask_dir, fn, np.asarray(mask_multi).shape)
         out = trainer._forward_sample(
             image_rgb,
-            mask_multi,
+            prompt_mask,
             fn,
             test_arms,
             train=False,
@@ -157,8 +184,55 @@ def run_bapmos_test_export(
             "experiment_name": experiment,
             "test_prompt_arms": dict(test_arms),
             "test_site": label,
+            "prompt_source": "external_mask" if prompt_mask_dir is not None else "gt_mask",
+            "prompt_mask_dir": str(prompt_mask_dir) if prompt_mask_dir is not None else None,
+            "prompt_noise_px": int(prompt_noise_px),
+            "prompt_noise_seed": int(prompt_noise_seed),
+            "prompt_noise_mode": str(prompt_noise_mode),
         },
     )
+    if trainer.test_prompt_log is not None:
+        write_prompt_log(
+            trainer.test_prompt_log,
+            Path(output_dir),
+            {
+                "noise_px": int(prompt_noise_px),
+                "mode": str(prompt_noise_mode),
+                "seed": int(prompt_noise_seed),
+                "checkpoint": str(checkpoint),
+            },
+        )
+
+
+def load_prompt_mask(mask_dir: Path, filename: str, shape: tuple) -> np.ndarray:
+    """Predicted label map ``<stem>_pred_ids.png`` used as the prompt source for one slice.
+
+    ``mask_dir`` is either a ``predictions/multiclass`` folder or an export root whose
+    sites hold ``<site>/predictions/multiclass/``. Raises when the file is missing, found
+    more than once, or its shape differs from the GT grid, so a missing prediction is
+    never silently replaced by the GT mask.
+    """
+    from bapmos.inference_output.export_bundle import _batch_filename_stem
+
+    name = f"{_batch_filename_stem(filename)}_pred_ids.png"
+    hits = [Path(mask_dir) / name] if (Path(mask_dir) / name).is_file() else sorted(
+        Path(mask_dir).glob(f"*/predictions/multiclass/{name}")
+    )
+    if len(hits) != 1:
+        raise FileNotFoundError(
+            f"Prompt mask for {filename}: expected one {name} under {mask_dir}, found {len(hits)}"
+        )
+    path = hits[0]
+    mask = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+    if mask is None:
+        raise FileNotFoundError(f"Prompt mask unreadable for {filename}: {path}")
+    if mask.ndim == 3:
+        mask = mask[..., 0]
+    if tuple(mask.shape) != tuple(shape[:2]):
+        raise ValueError(
+            f"Prompt mask {path} has shape {mask.shape}, expected GT grid {shape[:2]}"
+        )
+    return mask.astype(np.uint8)
 
 
 def main() -> None:
@@ -194,6 +268,25 @@ def main() -> None:
         help="Allow export for non-primary (non-seed-42) runs.",
     )
     p.add_argument("--device", type=str, default="cuda")
+    p.add_argument(
+        "--prompt-noise-px",
+        type=int,
+        default=0,
+        help="Perturb each box edge / point by U{-n..n} px at test time (default 0).",
+    )
+    p.add_argument("--prompt-noise-seed", type=int, default=0)
+    p.add_argument(
+        "--prompt-noise-mode",
+        choices=("uniform", "loose", "shift_paired", "loose_paired"),
+        default="uniform",
+        help="uniform: edges and points U{-n..n}; loose: box edges outward U{0..n}; *_paired: the same, with offsets keyed by (slice, class id) so every model family gets identical boxes.",
+    )
+    p.add_argument(
+        "--prompt-mask-dir",
+        type=str,
+        default=None,
+        help="Build prompts from <dir>/<stem>_pred_ids.png instead of the GT mask.",
+    )
     args = p.parse_args()
 
     run_bapmos_test_export(
@@ -204,6 +297,10 @@ def main() -> None:
         viz_per_patient_max=args.viz_per_patient_max,
         viz_pdf_max=args.viz_pdf_max,
         force_inference_output=bool(args.force_inference_output),
+        prompt_noise_px=int(args.prompt_noise_px),
+        prompt_noise_seed=int(args.prompt_noise_seed),
+        prompt_mask_dir=Path(args.prompt_mask_dir) if args.prompt_mask_dir else None,
+        prompt_noise_mode=args.prompt_noise_mode,
     )
     print(f"Done → {args.output_dir}")
 

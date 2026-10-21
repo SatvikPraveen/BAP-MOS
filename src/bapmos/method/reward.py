@@ -11,6 +11,7 @@ Modes:
   ``R = 1 - [0.3(1-Dice) + 0.5·min(MSD,τ)/τ + 0.2·min(HD95,λτ)/(λτ)]``
 
   λ is a fixed scale-normalization constant (default 3), not searched in the outer loop.
+- **dice_only:** ``R = Dice`` (region-only reward ablation; no boundary terms).
 """
 
 from __future__ import annotations
@@ -25,7 +26,8 @@ from bapmos.method.curriculum_reward import (
     tau_at_epoch,
 )
 
-RewardMode = Literal["fixed_clip", "curriculum", "composite_fixed_clip"]
+RewardMode = Literal["fixed_clip", "curriculum", "composite_fixed_clip", "dice_only"]
+REWARD_MODES = ("fixed_clip", "curriculum", "composite_fixed_clip", "dice_only")
 
 # Composite reward weights (fixed protocol constants, not searched).
 COMPOSITE_DICE_WEIGHT = 0.3
@@ -96,7 +98,7 @@ def reward_threshold_label(
     """
     if reward_mode == "fixed_clip":
         return clip_max_mm
-    if reward_mode == "composite_fixed_clip":
+    if reward_mode in ("composite_fixed_clip", "dice_only"):
         return clip_max_mm
     return tau_at_epoch(
         epoch,
@@ -144,9 +146,10 @@ def rewards_from_validation_msd(
             decay_fraction=decay_fraction,
             gamma=gamma,
         )
-    if reward_mode == "composite_fixed_clip":
+    if reward_mode in ("composite_fixed_clip", "dice_only"):
         raise ValueError(
-            "composite_fixed_clip requires Dice/MSD/HD95; use rewards_from_validation_metrics"
+            f"{reward_mode} needs per-organ probe metrics; use rewards_from_validation_metrics "
+            "or dice_only_rewards"
         )
     raise ValueError(f"Unknown reward_mode: {reward_mode!r}")
 
@@ -172,4 +175,14 @@ def rewards_from_validation_metrics(
             clip_max_mm,
             hd95_lambda=hd95_lambda,
         )
+    return out
+
+
+def dice_only_rewards(organ_metrics: Mapping[str, OrganProbeMetrics]) -> Dict[str, float]:
+    """Dice-only rewards (ablation of the boundary terms in the composite reward)."""
+    out: Dict[str, float] = {}
+    for organ, metrics in organ_metrics.items():
+        dice = float(metrics["dice"])
+        if np.isfinite(dice):
+            out[organ] = float(np.clip(dice, 0.0, 1.0))
     return out
