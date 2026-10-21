@@ -17,6 +17,10 @@ Randomness is deterministic per (sample_id, epoch) via ``stable_rng_from_id``.
 
 Asymmetric fallback: if point sampling fails (tiny or distorted organ), silently
 set ``effective_mode='box'`` so training never crashes on empty rings.
+
+Test-time robustness (:func:`perturb_organ_prompt`): every box edge and every point
+coordinate moves by an integer offset drawn uniformly from [-n, n] px. Offsets are
+seeded per (sample_id, n), so every method sees the same perturbed prompts.
 """
 
 from __future__ import annotations
@@ -291,6 +295,207 @@ def build_prompts_for_slice(
         if prompt is not None:
             out[organ_key] = prompt
 
+    return out
+
+
+def perturb_organ_prompt(
+    prompt: OrganPrompts,
+    noise_px: int,
+    image_hw: tuple[int, int],
+    rng: np.random.Generator,
+    mode: str = "uniform",
+) -> OrganPrompts:
+    """Perturb one organ's prompt at test time, clipped to the image.
+
+    ``uniform``: shift each box edge and point coordinate by U{-n..n} px.
+    ``loose``: move each box edge outward by U{0..n} px (a box drawn larger than the
+    organ); points are left unchanged.
+    """
+    if noise_px <= 0:
+        return prompt
+    if mode == "loose":
+        return _loosen_organ_prompt(prompt, int(noise_px), image_hw, rng)
+    if mode != "uniform":
+        raise ValueError(f"unknown prompt noise mode: {mode!r}")
+    h, w = image_hw
+    n = int(noise_px)
+    box = prompt.box_xyxy
+    if box is not None:
+        dx0, dy0, dx1, dy1 = (int(v) for v in rng.integers(-n, n + 1, size=4))
+        x_min = int(np.clip(int(box[0]) + dx0, 0, w - 1))
+        y_min = int(np.clip(int(box[1]) + dy0, 0, h - 1))
+        x_max = int(np.clip(int(box[2]) + dx1, 0, w - 1))
+        y_max = int(np.clip(int(box[3]) + dy1, 0, h - 1))
+        # Keep a valid box: swap inverted edges, then enforce a 2 px minimum size.
+        x_min, x_max = min(x_min, x_max), max(x_min, x_max)
+        y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+        x_max = min(w - 1, max(x_max, x_min + 2))
+        y_max = min(h - 1, max(y_max, y_min + 2))
+        box = np.array([x_min, y_min, x_max, y_max], dtype=np.int64)
+    points = prompt.points_xy
+    if points is not None:
+        offsets = rng.integers(-n, n + 1, size=points.shape)
+        points = points + offsets
+        points[:, 0] = np.clip(points[:, 0], 0, w - 1)
+        points[:, 1] = np.clip(points[:, 1], 0, h - 1)
+    return OrganPrompts(
+        organ_key=prompt.organ_key,
+        mode=prompt.mode,
+        effective_mode=prompt.effective_mode,
+        box_xyxy=box,
+        points_xy=points,
+        labels=prompt.labels,
+    )
+
+
+def _loosen_organ_prompt(
+    prompt: OrganPrompts,
+    n: int,
+    image_hw: tuple[int, int],
+    rng: np.random.Generator,
+) -> OrganPrompts:
+    """Move each box edge outward by U{0..n} px; points and labels are unchanged."""
+    box = prompt.box_xyxy
+    if box is None:
+        return prompt
+    h, w = image_hw
+    d_left, d_top, d_right, d_bottom = (int(v) for v in rng.integers(0, n + 1, size=4))
+    box = np.array(
+        [
+            max(0, int(box[0]) - d_left),
+            max(0, int(box[1]) - d_top),
+            min(w - 1, int(box[2]) + d_right),
+            min(h - 1, int(box[3]) + d_bottom),
+        ],
+        dtype=np.int64,
+    )
+    return OrganPrompts(
+        organ_key=prompt.organ_key,
+        mode=prompt.mode,
+        effective_mode=prompt.effective_mode,
+        box_xyxy=box,
+        points_xy=prompt.points_xy,
+        labels=prompt.labels,
+    )
+
+
+def perturb_slice_prompts(
+    prompts: Mapping[str, OrganPrompts],
+    noise_px: int,
+    image_hw: tuple[int, int],
+    sample_id: str,
+    base_seed: int,
+    mode: str = "uniform",
+) -> Dict[str, OrganPrompts]:
+    """Apply :func:`perturb_organ_prompt` to every organ with a per-(slice, n, mode) RNG.
+
+    The ``uniform`` stream keeps its original key, so its offsets are unchanged.
+    """
+    if noise_px <= 0:
+        return dict(prompts)
+    tag = "noise" if mode == "uniform" else mode
+    rng = stable_rng_from_id(f"{sample_id}|{tag}{int(noise_px)}", base_seed)
+    return {
+        key: perturb_organ_prompt(prompt, noise_px, image_hw, rng, mode=mode)
+        for key, prompt in prompts.items()
+    }
+
+
+PAIRED_NOISE_MODES = ("shift_paired", "loose_paired")
+
+
+def perturb_box_paired(
+    box: Optional[np.ndarray],
+    noise_px: int,
+    mode: str,
+    image_hw: tuple[int, int],
+    slice_key: str,
+    class_id: int,
+    base_seed: int,
+) -> Optional[np.ndarray]:
+    """Test-time box perturbation that every model receives identically.
+
+    Offsets come from a stream keyed by (slice, mask class id, mode, n) alone, so they do not
+    depend on the prompt type, on which other organs are present, or on the pipeline.
+    ``shift_paired``: each edge moves by U{-n..n} px; ``loose_paired``: each edge moves
+    outward by U{0..n} px. Clipped to the image; a shifted box keeps a 2 px minimum size.
+    """
+    if box is None or noise_px <= 0:
+        return box
+    if mode not in PAIRED_NOISE_MODES:
+        raise ValueError(f"unknown paired prompt noise mode: {mode!r}")
+    h, w = image_hw
+    n = int(noise_px)
+    rng = stable_rng_from_id(f"{slice_key}|c{int(class_id)}|{mode}{n}", base_seed)
+    x0, y0, x1, y1 = (int(v) for v in np.asarray(box).tolist())
+    if mode == "loose_paired":
+        d_left, d_top, d_right, d_bottom = (int(v) for v in rng.integers(0, n + 1, size=4))
+        return np.array(
+            [max(0, x0 - d_left), max(0, y0 - d_top), min(w - 1, x1 + d_right), min(h - 1, y1 + d_bottom)],
+            dtype=np.int64,
+        )
+    dx0, dy0, dx1, dy1 = (int(v) for v in rng.integers(-n, n + 1, size=4))
+    x_min = int(np.clip(x0 + dx0, 0, w - 1))
+    y_min = int(np.clip(y0 + dy0, 0, h - 1))
+    x_max = int(np.clip(x1 + dx1, 0, w - 1))
+    y_max = int(np.clip(y1 + dy1, 0, h - 1))
+    x_min, x_max = min(x_min, x_max), max(x_min, x_max)
+    y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+    x_max = min(w - 1, max(x_max, x_min + 2))
+    y_max = min(h - 1, max(y_max, y_min + 2))
+    return np.array([x_min, y_min, x_max, y_max], dtype=np.int64)
+
+
+def perturb_points_paired(
+    points: Optional[np.ndarray],
+    noise_px: int,
+    mode: str,
+    image_hw: tuple[int, int],
+    slice_key: str,
+    class_id: int,
+    base_seed: int,
+) -> Optional[np.ndarray]:
+    """Point counterpart of :func:`perturb_box_paired` on its own stream.
+
+    ``shift_paired`` shifts each coordinate by U{-n..n} px; ``loose_paired`` leaves points
+    unchanged. Box offsets never depend on whether points are drawn.
+    """
+    if points is None or noise_px <= 0 or mode == "loose_paired":
+        return points
+    if mode not in PAIRED_NOISE_MODES:
+        raise ValueError(f"unknown paired prompt noise mode: {mode!r}")
+    h, w = image_hw
+    n = int(noise_px)
+    rng = stable_rng_from_id(f"{slice_key}|c{int(class_id)}|{mode}{n}|points", base_seed)
+    out = points + rng.integers(-n, n + 1, size=points.shape)
+    out[:, 0] = np.clip(out[:, 0], 0, w - 1)
+    out[:, 1] = np.clip(out[:, 1], 0, h - 1)
+    return out
+
+
+def perturb_slice_prompts_paired(
+    prompts: Mapping[str, OrganPrompts],
+    noise_px: int,
+    mode: str,
+    image_hw: tuple[int, int],
+    slice_key: str,
+    organ_to_class: Mapping[str, int],
+    base_seed: int,
+) -> Dict[str, OrganPrompts]:
+    """Apply the paired perturbation to every organ's prompt (BAP-MOS family)."""
+    if noise_px <= 0:
+        return dict(prompts)
+    out: Dict[str, OrganPrompts] = {}
+    for key, prompt in prompts.items():
+        cid = int(organ_to_class[key])
+        out[key] = OrganPrompts(
+            organ_key=prompt.organ_key,
+            mode=prompt.mode,
+            effective_mode=prompt.effective_mode,
+            box_xyxy=perturb_box_paired(prompt.box_xyxy, noise_px, mode, image_hw, slice_key, cid, base_seed),
+            points_xy=perturb_points_paired(prompt.points_xy, noise_px, mode, image_hw, slice_key, cid, base_seed),
+            labels=prompt.labels,
+        )
     return out
 
 

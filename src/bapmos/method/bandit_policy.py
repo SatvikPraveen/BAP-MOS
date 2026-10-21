@@ -23,7 +23,7 @@ increments them when validation rewards are committed at block end.
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Literal, Mapping, Optional
+from typing import Any, Dict, List, Literal, Mapping, Optional, Union
 
 RewardMemory = Literal["sliding", "cumulative"]
 
@@ -203,6 +203,20 @@ class PerOrganBanditPolicy:
         """Commit one block reward for ``organ``'s ``arm`` (advances that organ's t and N_a)."""
         self.bandits[organ].commit_block_reward(arm, reward)
 
+    def select_block_arms(self, organs: List[str]) -> Dict[str, Action]:
+        """Arms for one block: an independent draw per organ (``organs`` order)."""
+        return {organ: self.select_arm(organ) for organ in organs if organ in self.bandits}
+
+    def commit_block_rewards(
+        self,
+        arms_by_organ: Mapping[str, Action],
+        rewards: Mapping[str, float],
+    ) -> None:
+        """Commit each organ's block reward to that organ's bandit."""
+        for organ, arm in arms_by_organ.items():
+            if organ in rewards:
+                self.commit_block_reward(organ, arm, float(rewards[organ]))
+
     def get_statistics_for_organ(self, organ: str) -> Dict[str, Any]:
         return self.bandits[organ].get_statistics()
 
@@ -277,6 +291,220 @@ class PerOrganBanditPolicy:
         return best
 
 
+class GlobalBanditPolicy(PerOrganBanditPolicy):
+    """
+    One UCB-Tuned bandit shared by every organ (global-selector ablation).
+
+    Each block selects a single arm for all organs, and the committed reward is the
+    mean of the per-organ block rewards. Every organ key maps to the same bandit
+    object, so test-time prompting (highest Q) uses one arm for all organs.
+    """
+
+    def __init__(
+        self,
+        organs: List[str],
+        arms: Optional[List[Action]] = None,
+        window_size: int = 50,
+        warmup_blocks_per_arm: int = 10,
+        min_pulls_per_arm: int = 5,
+        seed: int = 0,
+        *,
+        memory: RewardMemory = "sliding",
+    ) -> None:
+        if len(organs) == 0:
+            raise ValueError("organs must be non-empty")
+        self.organs = list(organs)
+        self.arms = list(arms or DEFAULT_ARMS)
+        self.shared = VarianceBoundedUCBTuned(
+            arms=self.arms,
+            window_size=window_size,
+            warmup_blocks_per_arm=warmup_blocks_per_arm,
+            min_pulls_per_arm=min_pulls_per_arm,
+            seed=seed,
+            memory=memory,
+        )
+        self.bandits = {organ: self.shared for organ in self.organs}
+
+    def select_block_arms(self, organs: List[str]) -> Dict[str, Action]:
+        """One draw per block, applied to every listed organ."""
+        organs = [o for o in organs if o in self.bandits]
+        if not organs:
+            return {}
+        arm = self.shared.select_arm()
+        return {organ: arm for organ in organs}
+
+    def commit_block_rewards(
+        self,
+        arms_by_organ: Mapping[str, Action],
+        rewards: Mapping[str, float],
+    ) -> None:
+        """Commit the mean reward over organs that received one (one bandit step)."""
+        got = [float(rewards[o]) for o in arms_by_organ if o in rewards]
+        if not got:
+            return
+        arm = next(iter(arms_by_organ.values()))
+        self.shared.commit_block_reward(arm, float(np.mean(got)))
+
+    def get_all_statistics(self) -> Dict[str, Any]:
+        stats = self.shared.get_statistics()
+        return {
+            "per_organ": {organ: stats for organ in self.organs},
+            "aggregated": {
+                "total_organs": len(self.organs),
+                "total_blocks": stats["total_pulls"],
+                "total_pulls": stats["total_pulls"],
+                "avg_pulls_per_organ": float(stats["total_pulls"]),
+                "best_arms_per_organ": self.get_best_arms_per_organ(),
+            },
+        }
+
+    def export_state(self) -> Dict[str, Any]:
+        state = super().export_state()
+        state["scope"] = "global"
+        return state
+
+
+class FixedSchedulePolicy:
+    """
+    Fixed prompt-mix schedule with no learning (fixed-ratio control).
+
+    Each block draws one arm per organ with probabilities proportional to ``weights``
+    (e.g. Box:Point:Both = 2:3:5). Rewards are ignored. Test-time prompting uses the
+    highest-weight arm, the convention of the legacy fixed-ratio runs.
+    """
+
+    def __init__(
+        self,
+        organs: List[str],
+        weights: Mapping[str, float],
+        seed: int = 0,
+    ) -> None:
+        if len(organs) == 0:
+            raise ValueError("organs must be non-empty")
+        arms = [a for a in DEFAULT_ARMS if float(weights.get(a, 0.0)) > 0.0]
+        if not arms:
+            raise ValueError(f"fixed schedule needs a positive weight; got {dict(weights)!r}")
+        unknown = set(weights) - set(DEFAULT_ARMS)
+        if unknown:
+            raise ValueError(f"Unknown arms in fixed weights: {sorted(unknown)}")
+        total = sum(float(weights[a]) for a in arms)
+        self.organs = list(organs)
+        self.arms: List[Action] = arms
+        self.probs = np.array([float(weights[a]) / total for a in arms])
+        self.bandits = {organ: None for organ in self.organs}
+        self._rng = np.random.default_rng(seed)
+        self._counts: Dict[str, Dict[Action, int]] = {
+            organ: {a: 0 for a in arms} for organ in self.organs
+        }
+
+    def select_arm(self, organ: str) -> Action:
+        _ = organ
+        return self.arms[int(self._rng.choice(len(self.arms), p=self.probs))]
+
+    def select_block_arms(self, organs: List[str]) -> Dict[str, Action]:
+        out: Dict[str, Action] = {}
+        for organ in organs:
+            if organ in self.bandits:
+                out[organ] = self.select_arm(organ)
+                self._counts[organ][out[organ]] += 1
+        return out
+
+    def commit_block_rewards(
+        self,
+        arms_by_organ: Mapping[str, Action],
+        rewards: Mapping[str, float],
+    ) -> None:
+        """Rewards do not change a fixed schedule."""
+        _ = arms_by_organ, rewards
+
+    def get_best_arms_per_organ(self) -> Dict[str, Action]:
+        top = self.arms[int(np.argmax(self.probs))]
+        return {organ: top for organ in self.organs}
+
+    def get_all_statistics(self) -> Dict[str, Any]:
+        top = self.get_best_arms_per_organ()
+        per_organ = {
+            organ: {
+                "t": sum(self._counts[organ].values()),
+                "total_pulls": sum(self._counts[organ].values()),
+                "N_a": dict(self._counts[organ]),
+                "Q_a": {a: 0.0 for a in self.arms},
+                "arm_counts": dict(self._counts[organ]),
+                "arm_avg_rewards": {a: 0.0 for a in self.arms},
+                "best_arm": top[organ],
+            }
+            for organ in self.organs
+        }
+        total = sum(s["total_pulls"] for s in per_organ.values())
+        return {
+            "per_organ": per_organ,
+            "aggregated": {
+                "total_organs": len(self.organs),
+                "total_blocks": total // max(len(self.organs), 1),
+                "total_pulls": total,
+                "avg_pulls_per_organ": total / max(len(self.organs), 1),
+                "best_arms_per_organ": top,
+            },
+        }
+
+    def export_state(self) -> Dict[str, Any]:
+        return {
+            "scope": "fixed",
+            "arms": list(self.arms),
+            "probs": [float(p) for p in self.probs],
+            "organs_list": list(self.organs),
+            "counts": {o: dict(c) for o, c in self._counts.items()},
+            "rng_state": self._rng.bit_generator.state,
+        }
+
+    def load_state(self, state: Dict[str, Any]) -> None:
+        if list(state.get("organs_list", [])) != list(self.organs):
+            raise ValueError("Checkpoint organ list does not match current policy.")
+        if list(state.get("arms", [])) != list(self.arms):
+            raise ValueError("Checkpoint arms do not match current policy.")
+        self._counts = {
+            o: {a: int(n) for a, n in c.items()} for o, c in state.get("counts", {}).items()
+        } or self._counts
+        if state.get("rng_state") is not None:
+            self._rng.bit_generator.state = state["rng_state"]
+
+
+PromptPolicy = Union[PerOrganBanditPolicy, FixedSchedulePolicy]
+
+BANDIT_SCOPES = ("per_organ", "global", "fixed")
+
+
+def build_prompt_policy(
+    scope: str,
+    organs: List[str],
+    *,
+    arms: Optional[List[Action]] = None,
+    window_size: int = 50,
+    warmup_blocks_per_arm: int = 10,
+    min_pulls_per_arm: int = 5,
+    seed: int = 0,
+    memory: RewardMemory = "sliding",
+    fixed_weights: Optional[Mapping[str, float]] = None,
+) -> PromptPolicy:
+    """Policy for ``bandit.scope``: ``per_organ`` (BAP-MOS), ``global`` or ``fixed``."""
+    if scope == "fixed":
+        if not fixed_weights:
+            raise ValueError("bandit.scope=fixed requires bandit.fixed_weights")
+        return FixedSchedulePolicy(organs, fixed_weights, seed=seed)
+    cls = {"per_organ": PerOrganBanditPolicy, "global": GlobalBanditPolicy}.get(scope)
+    if cls is None:
+        raise ValueError(f"bandit.scope must be one of {BANDIT_SCOPES}, got {scope!r}")
+    return cls(
+        organs=organs,
+        arms=arms,
+        window_size=window_size,
+        warmup_blocks_per_arm=warmup_blocks_per_arm,
+        min_pulls_per_arm=min_pulls_per_arm,
+        seed=seed,
+        memory=memory,
+    )
+
+
 class BlockScheduler:
     """
     Hold bandit arms fixed for K training batches; commit rewards only at block end.
@@ -287,7 +515,7 @@ class BlockScheduler:
 
     def __init__(
         self,
-        policy: PerOrganBanditPolicy,
+        policy: "PromptPolicy",
         block_size_batches: int = 50,
     ) -> None:
         if block_size_batches < 1:
@@ -302,10 +530,7 @@ class BlockScheduler:
 
     def begin_block(self, organs_present: List[str]) -> Dict[str, Action]:
         """Select and freeze one arm per present organ for the upcoming block."""
-        arms: Dict[str, Action] = {}
-        for organ in organs_present:
-            if organ in self.policy.bandits:
-                arms[organ] = self.policy.select_arm(organ)
+        arms = self.policy.select_block_arms(list(organs_present))
         self.state = BlockState(arms_by_organ=arms, batches_in_block=0)
         return dict(arms)
 
@@ -324,9 +549,7 @@ class BlockScheduler:
         """
         Commit rewards for organs in the current block; reset block state.
         """
-        for organ, arm in self.state.arms_by_organ.items():
-            if organ in rewards:
-                self.policy.commit_block_reward(organ, arm, float(rewards[organ]))
+        self.policy.commit_block_rewards(self.state.arms_by_organ, rewards)
         self.state = BlockState(arms_by_organ={}, batches_in_block=0)
 
     def needs_new_block(self) -> bool:
