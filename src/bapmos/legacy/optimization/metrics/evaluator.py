@@ -14,12 +14,51 @@ Distance units follow ``pixel_spacing`` (mm for DICOM-derived clinical/simulatio
 pixel-native when spacing is ``(1.0, 1.0)`` e.g. PFUS1).
 """
 
+import os
+from concurrent.futures import ProcessPoolExecutor
+import multiprocessing as mp
+
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
 from .boundary_metrics import compute_all_metrics
+
+# Optional parallel scoring: with BAPMOS_METRIC_WORKERS=N > 0, multiclass slices are queued in
+# chunks and scored by N worker processes. Each (slice, organ) result comes from the same pure
+# function on the same inputs and is appended in submission order, so per_slice_metrics is
+# identical to serial scoring. Unset or 0 keeps the serial path.
+_METRIC_CHUNK = 64
+_POOL: Optional[ProcessPoolExecutor] = None
+
+
+def _metric_workers() -> int:
+    try:
+        return max(0, int(os.environ.get("BAPMOS_METRIC_WORKERS", "0")))
+    except ValueError:
+        return 0
+
+
+def _pool(n: int) -> ProcessPoolExecutor:
+    global _POOL
+    if _POOL is None:
+        _POOL = ProcessPoolExecutor(max_workers=n, mp_context=mp.get_context("forkserver"))
+    return _POOL
+
+
+def _score_multiclass_slice(job):
+    """Worker: per-organ metrics for one multiclass slice, in class_mapping order."""
+    pred_multiclass, gt_multiclass, pixel_spacing, class_mapping, slice_idx, image_id = job
+    out = []
+    for class_id, organ_name in class_mapping.items():
+        pred_mask = (pred_multiclass == class_id).astype(np.uint8)
+        gt_mask = (gt_multiclass == class_id).astype(np.uint8)
+        metrics = compute_all_metrics(pred_mask, gt_mask, pixel_spacing, organ_name)
+        metrics["slice_idx"] = slice_idx
+        metrics["image_id"] = image_id
+        out.append(metrics)
+    return out
 
 
 class MetricsEvaluator:
@@ -43,7 +82,26 @@ class MetricsEvaluator:
         self.organs = organs
         
         # Storage for per-slice metrics
-        self.per_slice_metrics = []  # List of dicts
+        self._per_slice_metrics = []  # List of dicts
+        self._pending = []  # queued multiclass slices (parallel scoring only)
+
+    @property
+    def per_slice_metrics(self):
+        """Per-(slice, organ) metric dicts; scores any queued slices first."""
+        self._flush()
+        return self._per_slice_metrics
+
+    @per_slice_metrics.setter
+    def per_slice_metrics(self, value):
+        self._pending = []
+        self._per_slice_metrics = value
+
+    def _flush(self):
+        if not self._pending:
+            return
+        jobs, self._pending = self._pending, []
+        for rows in _pool(_metric_workers()).map(_score_multiclass_slice, jobs, chunksize=4):
+            self._per_slice_metrics.extend(rows)
     
     def evaluate_slice(
         self,
@@ -72,7 +130,7 @@ class MetricsEvaluator:
         metrics["slice_idx"] = slice_idx
         metrics["image_id"] = image_id
         
-        # Store
+        # Store (after any queued slices, so the order matches serial scoring)
         self.per_slice_metrics.append(metrics)
     
     def evaluate_multiclass_slice(
@@ -96,7 +154,16 @@ class MetricsEvaluator:
         """
         if class_mapping is None:
             class_mapping = {1: "Rectum", 2: "Bladder", 3: "PTV1"}
-        
+
+        if _metric_workers() > 0:
+            self._pending.append(
+                (np.asarray(pred_multiclass), np.asarray(gt_multiclass), self.pixel_spacing,
+                 dict(class_mapping), slice_idx, image_id)
+            )
+            if len(self._pending) >= _METRIC_CHUNK:
+                self._flush()
+            return
+
         # Evaluate each organ separately
         for class_id, organ_name in class_mapping.items():
             pred_mask = (pred_multiclass == class_id).astype(np.uint8)
