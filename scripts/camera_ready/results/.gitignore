@@ -1,0 +1,4 @@
+# Generated data: collected numbers, checks and workbooks stay out of git
+*.json
+*.xlsx
+__pycache__/
