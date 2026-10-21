@@ -8,6 +8,8 @@ Defaults (override via env before ``nnUNetv2_train``):
 
 - ``NNUNET_BATCH_SIZE`` — default **128** (BAP-MOS PFUS1 parity). Lower to 4–8 if OOM on full-res 2d patches.
 - ``NNUNET_LR`` — default **1e-4** (flat; no poly decay)
+- ``NNUNET_OPTIMIZER`` — ``sgd`` (default: Nesterov, momentum 0.99, nnU-Net weight decay) or
+  ``adam`` (Adam without weight decay, as the external U-Net baseline)
 - ``NNUNET_MAX_EPOCHS`` (100)
 - ``NNUNET_PATIENCE`` (20) — early stop when validation checkpoint metric does not improve
 - ``NNUNET_CHECKPOINT_OBJECTIVE`` — default ``ptv_kfold_msd`` (BAP-MOS / U-Net parity).
@@ -118,8 +120,13 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         self.configuration_manager.configuration["batch_size"] = batch_size
 
         self.initial_lr = _env_float("NNUNET_LR", PFUS1_LR)
+        self.optimizer_name = os.environ.get("NNUNET_OPTIMIZER", "sgd").strip().lower()
+        if self.optimizer_name not in ("sgd", "adam"):
+            raise ValueError(f"NNUNET_OPTIMIZER={self.optimizer_name!r}; use 'sgd' or 'adam'")
         self.num_epochs = _env_int("NNUNET_MAX_EPOCHS", PFUS1_MAX_EPOCHS)
         self.patience = _env_int("NNUNET_PATIENCE", PFUS1_PATIENCE)
+        # checkpoint_latest every N epochs (nnU-Net default 50); 1 lets short jobs resume.
+        self.save_every = _env_int("NNUNET_SAVE_EVERY", self.save_every)
         self._epochs_without_improvement = 0
         self._checkpoint_objective = _checkpoint_objective_from_env()
         self._bapmos_best_ptv_msd: Optional[float] = None
@@ -132,7 +139,7 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
             else "EMA foreground Dice"
         )
         self.print_to_log_file(
-            f"BapMos protocol: batch_size={batch_size} lr={self.initial_lr} "
+            f"BapMos protocol: batch_size={batch_size} optimizer={self.optimizer_name} lr={self.initial_lr} "
             f"max_epochs={self.num_epochs} patience={self.patience} "
             f"(full cohort/epoch, flat lr, early stop on {ckpt_desc})",
             also_print_to_console=True,
@@ -142,17 +149,21 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         return self._checkpoint_objective.metric == "ptv_kfold_msd"
 
     def configure_optimizers(self):
-        """SGD (Nesterov, momentum 0.99, nnU-Net weight decay) at ``initial_lr`` with a flat LR schedule.
+        """SGD (Nesterov, momentum 0.99, nnU-Net weight decay) or Adam at ``initial_lr``, flat LR.
 
-        Replaces nnU-Net's default poly decay so the LR matches the BAP-MOS protocol.
+        Replaces nnU-Net's default poly decay so the LR matches the BAP-MOS protocol; ``adam``
+        matches the external U-Net baseline (Adam, no weight decay).
         """
-        optimizer = torch.optim.SGD(
-            self.network.parameters(),
-            self.initial_lr,
-            weight_decay=self.weight_decay,
-            momentum=0.99,
-            nesterov=True,
-        )
+        if self.optimizer_name == "adam":
+            optimizer = torch.optim.Adam(self.network.parameters(), lr=self.initial_lr)
+        else:
+            optimizer = torch.optim.SGD(
+                self.network.parameters(),
+                self.initial_lr,
+                weight_decay=self.weight_decay,
+                momentum=0.99,
+                nesterov=True,
+            )
         lr_scheduler = make_constant_lr_scheduler(optimizer)
         return optimizer, lr_scheduler
 
@@ -302,8 +313,7 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         if best is not None:
             self._bapmos_best_ptv_msd = best
             self.print_to_log_file(
-                f"Restored best PTV k-fold MSD={best} from training log "
-                f"(patience counter reset for resume)",
+                f"Restored best PTV k-fold MSD={best} from training log",
                 also_print_to_console=True,
             )
 
@@ -348,8 +358,9 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         stored = checkpoint.get("_bapmos_best_ptv_msd")
         if stored is not None:
             self._bapmos_best_ptv_msd = float(stored)
-        # Fresh patience window on resume (do not restore exhausted counter).
-        self._epochs_without_improvement = 0
+        # Resume the patience counter where it was, so a resumed run stops exactly where an
+        # uninterrupted one would.
+        self._epochs_without_improvement = int(checkpoint.get("_epochs_without_improvement", 0))
         self._restore_best_ptv_msd_if_needed()
 
     def _ddp_broadcast_stop(self, local_stop: bool) -> bool:
@@ -370,8 +381,8 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
         """nnU-Net training loop with BAP-MOS checkpoint selection and early stopping.
 
         In ``ptv_kfold_msd`` mode an epoch improves when the k-fold MSD beats the best
-        by ``min_delta``; otherwise the EMA foreground Dice must increase. Patience is
-        frozen while no k-fold score is available, and the stop decision is broadcast
+        by ``min_delta``; otherwise the EMA foreground Dice must increase. An epoch with
+        no k-fold score counts as not improving, and the stop decision is broadcast
         so all DDP ranks exit together.
         """
         self.on_train_start()
@@ -425,17 +436,16 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
 
             if improved:
                 self._epochs_without_improvement = 0
-            elif self._ptv_checkpoint_mode() and candidate is None:
-                if not self._bapmos_warned_missing_kfold:
+            else:
+                # An epoch without a k-fold score (no validation slice with both a predicted
+                # and a reference boundary) counts as not improving, as in the BAP-MOS and
+                # decoder trainers.
+                if self._ptv_checkpoint_mode() and candidate is None:
                     self.print_to_log_file(
-                        "PTV k-fold checkpoint unavailable: set BAPMOS_NNUNET_DATA_ROOT "
-                        "(or BAPMOS_DATA_ROOT / PTV_DATA_ROOT) and ensure val boundary "
-                        "metrics run each epoch. Early-stop patience is frozen until "
-                        "a score is computed.",
+                        "No PTV k-fold score this epoch (no valid boundary on the objective "
+                        "organ); counted as no improvement.",
                         also_print_to_console=True,
                     )
-                    self._bapmos_warned_missing_kfold = True
-            else:
                 self._epochs_without_improvement += 1
                 if self._epochs_without_improvement >= self.patience:
                     metric = (
@@ -450,10 +460,26 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
                     )
                     local_stop = True
 
+            self._save_latest_if_due(epoch)
             if self._ddp_broadcast_stop(local_stop):
                 break
 
         self.on_train_end()
+
+    def _save_latest_if_due(self, epoch: int) -> None:
+        """Write checkpoint_latest for ``epoch`` after its best score and patience are updated.
+
+        nnU-Net stores ``current_epoch + 1`` as the epoch to resume from and expects to be
+        called before the epoch counter advances, so the counter is set back for the call.
+        """
+        if (epoch + 1) % self.save_every != 0 or epoch == self.num_epochs - 1:
+            return
+        advanced = self.current_epoch
+        self.current_epoch = epoch
+        try:
+            self.save_checkpoint(join(self.output_folder, "checkpoint_latest.pth"))
+        finally:
+            self.current_epoch = advanced
 
     def on_epoch_end(self) -> None:
         """nnU-Net hook: log boundary metrics, then pick ``checkpoint_best`` by PTV k-fold MSD or stock EMA Dice."""
@@ -509,11 +535,8 @@ class nnUNetTrainerBapMosProtocol(nnUNetTrainer):
             f"Epoch time: {np.round(self.logger.get_value('epoch_end_timestamps', step=-1) - self.logger.get_value('epoch_start_timestamps', step=-1), decimals=2)} s"
         )
 
-        current_epoch = self.current_epoch
-        if (current_epoch + 1) % self.save_every == 0 and current_epoch != (
-            self.num_epochs - 1
-        ):
-            self.save_checkpoint(join(self.output_folder, "checkpoint_latest.pth"))
+        # checkpoint_latest is written by run_training once this epoch's best score and
+        # patience counter are final (see _save_latest_if_due).
 
         ptv_msd = self._ptv_checkpoint_score()
         if ptv_msd is None and not self._evaluator_organ_labels():
