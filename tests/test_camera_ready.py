@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import platform
+
 import numpy as np
 import pytest
 
@@ -621,6 +623,18 @@ def _loop_surface_distances(pred, gt, spacing):
     return float(np.percentile(d, 95)), float(np.mean(d))
 
 
+# The reported numbers were computed on x86-64, where these distances are bit-identical;
+# other platforms (e.g. Apple Silicon) may differ in the last few ulp.
+_EXACT_FLOATS = platform.machine() in ("x86_64", "AMD64")
+
+
+def _same(a, b):
+    if _EXACT_FLOATS:
+        return np.array_equal(a, b)
+    np.testing.assert_array_max_ulp(np.asarray(a, float), np.asarray(b, float), maxulp=4)
+    return True
+
+
 @pytest.mark.parametrize("spacing", [(1.0, 1.0), (0.154, 0.154), (0.2, 0.31), (1, 1)])
 def test_vectorised_surface_distances_bit_identical(spacing):
     import cv2
@@ -634,10 +648,10 @@ def test_vectorised_surface_distances_bit_identical(spacing):
                     (int(rng.integers(10, 50)), int(rng.integers(10, 40))), float(rng.uniform(0, 180)), 0, 360, 1, -1)
         pred = (rng.random(gt.shape) < rng.uniform(0.002, 0.3)).astype(np.uint8) | np.roll(gt, int(rng.integers(-9, 9)), 1)
         hd, msd = _loop_surface_distances(pred, gt, spacing)
-        assert bm.hausdorff_distance_95(pred, gt, spacing) == hd
-        assert bm.mean_surface_distance(pred, gt, spacing) == msd
+        assert _same(bm.hausdorff_distance_95(pred, gt, spacing), hd)
+        assert _same(bm.mean_surface_distance(pred, gt, spacing), msd)
         m = bm.compute_all_metrics(pred, gt, spacing)
-        assert m["hd95_mm"] == hd and m["msd_mm"] == msd == m["boundary_dist_mm"]
+        assert _same(m["hd95_mm"], hd) and _same(m["msd_mm"], msd) and m["msd_mm"] == m["boundary_dist_mm"]
 
 
 def test_baseline_exports_accept_external_prompt_masks():
@@ -671,9 +685,9 @@ def test_boundary_distances_equal_brute_force():
         pb, gb = bm.get_boundary_points(pred), bm.get_boundary_points(gt)
         if len(pb) == 0 or len(gb) == 0:
             continue
-        assert np.array_equal(bm._directed_min_distances(pb, gb, spacing), brute(pb, gb, spacing))
-        assert np.array_equal(bm._directed_min_distances(gb, pb, spacing), brute(gb, pb, spacing))
+        assert _same(bm._directed_min_distances(pb, gb, spacing), brute(pb, gb, spacing))
+        assert _same(bm._directed_min_distances(gb, pb, spacing), brute(gb, pb, spacing))
         both = np.concatenate([brute(pb, gb, spacing), brute(gb, pb, spacing)])
         m = bm.compute_all_metrics(pred, gt, spacing)
-        assert m["hd95_mm"] == float(np.percentile(both, 95))
+        assert _same(m["hd95_mm"], float(np.percentile(both, 95)))
         assert m["msd_mm"] == float(np.mean(both)) == m["boundary_dist_mm"]
