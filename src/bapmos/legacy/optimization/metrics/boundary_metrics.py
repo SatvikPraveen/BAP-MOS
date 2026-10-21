@@ -15,6 +15,7 @@ Handles empty masks appropriately.
 import numpy as np
 from typing import Dict, Tuple, Optional
 import cv2
+from scipy.spatial import cKDTree
 
 
 def compute_boundary_mask(binary_mask: np.ndarray, thickness: int = 1) -> np.ndarray:
@@ -61,6 +62,36 @@ def get_boundary_points(binary_mask: np.ndarray) -> np.ndarray:
     return points
 
 
+def _directed_min_distances(
+    src: np.ndarray, dst: np.ndarray, pixel_spacing: Tuple[float, float]
+) -> np.ndarray:
+    """For each src point, the Euclidean distance (mm) to the nearest dst point.
+
+    Exact nearest-neighbour search (k-d tree) on the spacing-scaled coordinates. Each distance
+    is computed with the same arithmetic as the all-pairs form (subtract, square, sum the two
+    coordinates, sqrt), so results equal the brute-force minimum (tested).
+    """
+    spacing = np.array(pixel_spacing)
+    src_mm = src * spacing
+    dst_mm = dst * spacing
+    dist, _ = cKDTree(dst_mm).query(src_mm, k=1)
+    return np.asarray(dist, dtype=np.float64)
+
+
+def _symmetric_boundary_distances(
+    pred_mask: np.ndarray, gt_mask: np.ndarray, pixel_spacing: Tuple[float, float]
+) -> Optional[np.ndarray]:
+    """Pred-to-GT and GT-to-pred boundary distances (mm), or None if either boundary is empty."""
+    pred_boundary = get_boundary_points(pred_mask)
+    gt_boundary = get_boundary_points(gt_mask)
+    if len(pred_boundary) == 0 or len(gt_boundary) == 0:
+        return None
+    return np.concatenate([
+        _directed_min_distances(pred_boundary, gt_boundary, pixel_spacing),
+        _directed_min_distances(gt_boundary, pred_boundary, pixel_spacing),
+    ])
+
+
 def hausdorff_distance_95(
     pred_mask: np.ndarray,
     gt_mask: np.ndarray,
@@ -79,45 +110,10 @@ def hausdorff_distance_95(
     Returns:
         HD95 in mm, or None if either mask has no boundary
     """
-    # Get boundary points
-    pred_boundary = get_boundary_points(pred_mask)
-    gt_boundary = get_boundary_points(gt_mask)
-    
-    # Handle empty boundaries
-    if len(pred_boundary) == 0 or len(gt_boundary) == 0:
+    all_distances = _symmetric_boundary_distances(pred_mask, gt_mask, pixel_spacing)
+    if all_distances is None:
         return None
-    
-    # Compute distances from pred to GT
-    distances_pred_to_gt = []
-    for p in pred_boundary:
-        # Convert to mm
-        p_mm = p * np.array(pixel_spacing)
-        gt_mm = gt_boundary * np.array(pixel_spacing)
-        
-        # Euclidean distances to all GT boundary points
-        dists = np.sqrt(np.sum((gt_mm - p_mm)**2, axis=1))
-        min_dist = np.min(dists)
-        distances_pred_to_gt.append(min_dist)
-    
-    # Compute distances from GT to pred
-    distances_gt_to_pred = []
-    for g in gt_boundary:
-        # Convert to mm
-        g_mm = g * np.array(pixel_spacing)
-        pred_mm = pred_boundary * np.array(pixel_spacing)
-        
-        # Euclidean distances to all pred boundary points
-        dists = np.sqrt(np.sum((pred_mm - g_mm)**2, axis=1))
-        min_dist = np.min(dists)
-        distances_gt_to_pred.append(min_dist)
-    
-    # Combine all distances
-    all_distances = np.array(distances_pred_to_gt + distances_gt_to_pred)
-    
-    # 95th percentile
-    hd95 = np.percentile(all_distances, 95)
-    
-    return float(hd95)
+    return float(np.percentile(all_distances, 95))
 
 
 def mean_surface_distance(
@@ -140,43 +136,10 @@ def mean_surface_distance(
     Returns:
         MSD in mm, or None if either mask has no boundary
     """
-    # Get boundary points
-    pred_boundary = get_boundary_points(pred_mask)
-    gt_boundary = get_boundary_points(gt_mask)
-    
-    # Handle empty boundaries
-    if len(pred_boundary) == 0 or len(gt_boundary) == 0:
+    all_distances = _symmetric_boundary_distances(pred_mask, gt_mask, pixel_spacing)
+    if all_distances is None:
         return None
-    
-    # Compute distances from pred to GT
-    distances_pred_to_gt = []
-    for p in pred_boundary:
-        # Convert to mm
-        p_mm = p * np.array(pixel_spacing)
-        gt_mm = gt_boundary * np.array(pixel_spacing)
-        
-        # Euclidean distances to all GT boundary points
-        dists = np.sqrt(np.sum((gt_mm - p_mm)**2, axis=1))
-        min_dist = np.min(dists)
-        distances_pred_to_gt.append(min_dist)
-    
-    # Compute distances from GT to pred
-    distances_gt_to_pred = []
-    for g in gt_boundary:
-        # Convert to mm
-        g_mm = g * np.array(pixel_spacing)
-        pred_mm = pred_boundary * np.array(pixel_spacing)
-        
-        # Euclidean distances to all pred boundary points
-        dists = np.sqrt(np.sum((pred_mm - g_mm)**2, axis=1))
-        min_dist = np.min(dists)
-        distances_gt_to_pred.append(min_dist)
-    
-    # Mean of all distances
-    all_distances = np.array(distances_pred_to_gt + distances_gt_to_pred)
-    msd = np.mean(all_distances)
-    
-    return float(msd)
+    return float(np.mean(all_distances))
 
 
 def boundary_distance(
@@ -325,8 +288,10 @@ def compute_all_metrics(
     
     else:
         # Case D: Both non-empty → compute boundary metrics
-        hd95 = hausdorff_distance_95(pred_binary, gt_binary, pixel_spacing)
-        msd = mean_surface_distance(pred_binary, gt_binary, pixel_spacing)
+        # One distance computation serves both metrics.
+        all_distances = _symmetric_boundary_distances(pred_binary, gt_binary, pixel_spacing)
+        hd95 = None if all_distances is None else float(np.percentile(all_distances, 95))
+        msd = None if all_distances is None else float(np.mean(all_distances))
         boundary_dist = msd  # Same as MSD
         
         # Check if boundary metrics are valid
