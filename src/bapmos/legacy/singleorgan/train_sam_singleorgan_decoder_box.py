@@ -21,6 +21,13 @@ from segment_anything import sam_model_registry
 from segment_anything.utils.transforms import ResizeLongestSide
 from torch.utils.data import DataLoader
 
+from bapmos.multiorgan.finetune_scope import (
+    apply_finetune_scope,
+    check_finetune_scope,
+    encoder_grad,
+    load_sam_model_state,
+    sam_model_state,
+)
 from bapmos.baseline_validation_metrics import (
     append_single_organ_validation_slice,
     organ_balanced_validation_summary,
@@ -110,12 +117,9 @@ class SAMSingleOrganBoxTrainer:
 
         self.model = sam_model_registry["vit_b"](checkpoint=config["sam_checkpoint"]).to(self.device)
         self.model.train()
-        for p in self.model.image_encoder.parameters():
-            p.requires_grad = False
-        for p in self.model.prompt_encoder.parameters():
-            p.requires_grad = False
-        for p in self.model.mask_decoder.parameters():
-            p.requires_grad = True
+        # Decoder-only by default; finetune_scope=full trains every SAM part (Table I).
+        self.finetune_scope = check_finetune_scope(config.get("finetune_scope", "decoder"))
+        apply_finetune_scope(self.model, self.finetune_scope)
 
         self.transform = ResizeLongestSide(self.model.image_encoder.img_size)
         params = [p for p in self.model.parameters() if p.requires_grad]
@@ -153,7 +157,7 @@ class SAMSingleOrganBoxTrainer:
             raise ValueError(
                 "Resume requires format_version=2 checkpoints produced by this trainer version."
             )
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        load_sam_model_state(self.model, ckpt["model_state"])
         self.optimizer.load_state_dict(ckpt["optimizer_state"])
         self.scheduler.load_state_dict(ckpt["scheduler_state"])
         best = ckpt.get("best_val_msd_tracked")
@@ -221,13 +225,13 @@ class SAMSingleOrganBoxTrainer:
     def _forward_one(self, image_rgb, mask_bin, filename, is_train: bool):
         x, original_size = self._prepare_image(image_rgb)
         gt = self._prepare_mask(mask_bin)
-        with torch.no_grad():
+        with encoder_grad(self.finetune_scope, is_train):
             img_emb = self.model.image_encoder(x)
         boxes_t = self._box_prompt(mask_bin, original_size, filename, is_train)
         if boxes_t is None:
             return None
         box_i = boxes_t[0:1, :]
-        with torch.no_grad():
+        with encoder_grad(self.finetune_scope, is_train):
             sparse, dense = self.model.prompt_encoder(
                 points=None, boxes=box_i.unsqueeze(1), masks=None
             )
@@ -333,7 +337,7 @@ class SAMSingleOrganBoxTrainer:
             "best_val_msd_tracked": float(self.best_val_msd),
             "val_msd_at_save": float(val_msd) if val_msd is not None else None,
             "epochs_without_improvement": int(self.epochs_without_improvement),
-            "model_state": {"mask_decoder": self.model.mask_decoder.state_dict()},
+            "model_state": sam_model_state(self.model, self.finetune_scope),
             "optimizer_state": self.optimizer.state_dict(),
             "scheduler_state": self.scheduler.state_dict(),
             "config": self.cfg,
@@ -440,7 +444,7 @@ class SAMSingleOrganBoxTrainer:
         if not best_path.exists():
             raise FileNotFoundError(f"Missing best checkpoint: {best_path}")
         ckpt = torch.load(best_path, map_location=self.device, weights_only=False)
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        load_sam_model_state(self.model, ckpt["model_state"])
         test_loss, test_dice, test_summ = self.run_epoch(test_loader, train=False)
         test_msd = test_summ.get("val_msd") if test_summ else None
         test_hd95 = test_summ.get("val_hd95") if test_summ else None
@@ -496,6 +500,12 @@ def main():
     p.add_argument("--max_epochs", type=int, default=100)
     p.add_argument("--batch_size", type=int, default=1)
     p.add_argument("--lr", type=float, default=1e-4)
+    p.add_argument(
+        "--finetune-scope",
+        choices=("decoder", "full"),
+        default="decoder",
+        help="decoder: frozen encoders (default); full: train every SAM parameter (Table I).",
+    )
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--box_jitter_px", type=int, default=None, help="BAP-MOS train box jitter (0..N px per edge).")
     p.add_argument("--box_noise_pixels", type=int, default=10, help="Legacy alias for --box_jitter_px.")
@@ -599,6 +609,7 @@ def main():
             "max_epochs": args.max_epochs,
             "batch_size": args.batch_size,
             "lr": args.lr,
+            "finetune_scope": args.finetune_scope,
             "seed": args.seed,
             "box_jitter_px": jitter_px,
             "box_noise_pixels": jitter_px,

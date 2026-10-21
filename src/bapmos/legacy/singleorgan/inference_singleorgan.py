@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from bapmos.multiorgan.dataset_multi_organ import compute_bounding_box
+from bapmos.multiorgan.finetune_scope import load_sam_model_state
 from bapmos.paths import resolve_model_checkpoint, resolve_training_data_root
 from .dataset_single_organ import SingleOrganDataset
 
@@ -62,7 +63,8 @@ class SingleOrganInference:
         sam_path = self.config.get("sam_checkpoint", "models/sam_base/sam_vit_b_01ec64.pth")
         sam_path = str(resolve_model_checkpoint(sam_path))
         self.model = sam_model_registry["vit_b"](checkpoint=sam_path).to(self.device)
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        # Full-model (Table I) checkpoints also carry encoder weights.
+        load_sam_model_state(self.model, ckpt["model_state"])
         self.model.eval()
         self.transform = ResizeLongestSide(self.model.image_encoder.img_size)
 

@@ -9,8 +9,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import numpy as np
 import torch
 
+from bapmos.inference_output.prompt_log import write_prompt_log
 from bapmos.evaluation.test_panels import distance_unit_short
 from bapmos.inference_output.pfus1_defaults import export_viz_kwargs_for_data_root
 from bapmos.inference_output.protocol import require_primary_inference_seed_run
@@ -21,6 +23,8 @@ from bapmos.inference_output.site_export import (
     resolve_torch_device,
 )
 from bapmos.metrics.baseline_validation_metrics import multiclass_pred_uint8_from_logits
+from bapmos.method.run_test_inference import load_prompt_mask
+from bapmos.multiorgan.finetune_scope import load_sam_model_state
 from bapmos.paths import resolve_under_project
 from bapmos.train.training_taxonomy import get_baseline_taxonomy_profile
 
@@ -63,6 +67,10 @@ def run_multiorgan_sam_test_export(
     viz_pdf_max: int | None = None,
     force_inference_output: bool = False,
     device: str = "cuda",
+    prompt_noise_px: int = 0,
+    prompt_noise_mode: str = "shift_paired",
+    prompt_noise_seed: int = 0,
+    prompt_mask_dir: Path | None = None,
 ) -> None:
     """Load a multi-organ SAM box/points checkpoint and export the stratified test split.
 
@@ -96,11 +104,22 @@ def run_multiorgan_sam_test_export(
         ckpt = torch.load(checkpoint, map_location=trainer.device, weights_only=False)
     except TypeError:
         ckpt = torch.load(checkpoint, map_location=trainer.device)
-    md = ckpt.get("model_state", {}).get("mask_decoder")
-    if md is None:
+    model_state = ckpt.get("model_state") or {}
+    if "mask_decoder" not in model_state:
         raise KeyError(f"No model_state.mask_decoder in {checkpoint}")
-    trainer.model.mask_decoder.load_state_dict(md)
+    # Full-model (Table I) checkpoints also carry encoder weights.
+    load_sam_model_state(trainer.model, model_state)
     trainer.model.eval()
+    if prompt_noise_px > 0 and prompt_type != "box":
+        raise ValueError("paired prompt noise is implemented for box checkpoints only")
+    trainer.test_prompt_noise_px = int(prompt_noise_px)
+    trainer.test_prompt_noise_mode = str(prompt_noise_mode)
+    trainer.test_prompt_noise_seed = int(prompt_noise_seed)
+    trainer.test_prompt_log = {} if prompt_noise_px > 0 else None
+    if prompt_mask_dir is not None:
+        prompt_mask_dir = resolve_under_project(prompt_mask_dir)
+        if not prompt_mask_dir.is_dir():
+            raise FileNotFoundError(f"--prompt-mask-dir not found: {prompt_mask_dir}")
 
     taxonomy = get_baseline_taxonomy_profile(data_root)
     unit = distance_unit_short(taxonomy.taxonomy_name)
@@ -114,7 +133,10 @@ def run_multiorgan_sam_test_export(
     @torch.no_grad()
     def predict_fn(image_rgb, mask_multi, fn: str):
         """Return the 256x256 label map for one test slice with the run's prompt type."""
-        out = trainer._forward_one(image_rgb, mask_multi, fn, is_train=False)
+        prompt_mask = mask_multi
+        if prompt_mask_dir is not None:
+            prompt_mask = load_prompt_mask(prompt_mask_dir, fn, np.asarray(mask_multi).shape)
+        out = trainer._forward_one(image_rgb, prompt_mask, fn, is_train=False)
         if out is None:
             return None
         logits, _gt = out
@@ -137,8 +159,14 @@ def run_multiorgan_sam_test_export(
             "prompt_type": prompt_type,
             "run_name": run_name,
             "test_site": label,
+            "prompt_noise_px": int(prompt_noise_px),
+            "prompt_noise_mode": str(prompt_noise_mode) if prompt_noise_px > 0 else None,
+            "prompt_source": "external_mask" if prompt_mask_dir is not None else "gt_mask",
+            "prompt_mask_dir": str(prompt_mask_dir) if prompt_mask_dir is not None else None,
         },
     )
+    if trainer.test_prompt_log is not None:
+        write_prompt_log(trainer.test_prompt_log, Path(output_dir), {"noise_px": int(prompt_noise_px), "mode": prompt_noise_mode, "seed": int(prompt_noise_seed), "checkpoint": str(checkpoint)})
 
 
 def main() -> None:
@@ -162,6 +190,16 @@ def main() -> None:
         help="Allow export for non-primary (non-seed-42) runs.",
     )
     p.add_argument("--device", type=str, default="cuda")
+    p.add_argument("--prompt-noise-px", type=int, default=0, help="Paired test-time box perturbation size (px).")
+    p.add_argument("--prompt-noise-mode", choices=("shift_paired", "loose_paired"), default="shift_paired")
+    p.add_argument("--prompt-noise-seed", type=int, default=0)
+    p.add_argument(
+        "--prompt-mask-dir",
+        type=str,
+        default=None,
+        help="Build box prompts from another model's predicted label maps (*_pred_ids.png) "
+        "instead of the GT mask; scoring still uses the GT mask.",
+    )
     args = p.parse_args()
 
     run_multiorgan_sam_test_export(
@@ -172,6 +210,10 @@ def main() -> None:
         viz_pdf_max=args.viz_pdf_max,
         force_inference_output=bool(args.force_inference_output),
         device=args.device,
+        prompt_noise_px=int(args.prompt_noise_px),
+        prompt_noise_mode=args.prompt_noise_mode,
+        prompt_noise_seed=int(args.prompt_noise_seed),
+        prompt_mask_dir=Path(args.prompt_mask_dir) if args.prompt_mask_dir else None,
     )
     print(f"Done → {args.output_dir}")
 

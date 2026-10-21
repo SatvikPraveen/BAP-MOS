@@ -28,6 +28,7 @@ from ..paths import (
     find_training_images_dir,
     is_pfus1_advanced_training_root,
     is_pfus1_training_root,
+    is_pooled_prostate_training_root,
     pfus1_advanced_image_root,
     pfus1_image_root,
     project_root,
@@ -74,6 +75,7 @@ class MultiOrganDataset(Dataset):
         transform=None,
         splits_subdir: str = "splits_stratified",
         image_embedding_dir: Optional[str] = None,
+        cache_embedding_packs: bool = True,
     ):
         """
         Args:
@@ -119,12 +121,17 @@ class MultiOrganDataset(Dataset):
         self._is_pfus1_advanced = is_pfus1_advanced_training_root(self.data_root)
         self._is_pfus1_family = self._is_pfus1 or self._is_pfus1_advanced
         self._embedding_dir: Optional[Path] = None
+        # Loaded packs, kept per dataset instance so each file is read once per run.
+        self._pack_cache: Dict[str, dict] = {}
+        # False: load each embedding pack per access (DataLoader workers) without keeping it;
+        # a full PFUS1 split is ~42 GB of float32 packs per worker.
+        self._cache_embedding_packs = bool(cache_embedding_packs)
         if image_embedding_dir is not None:
-            if not self._is_pfus1_family:
+            if not (self._is_pfus1_family or is_pooled_prostate_training_root(self.data_root)):
                 raise ValueError(
                     "image_embedding_dir is only supported when data_root resolves to "
-                    "data/bladder/pfus1 or data/bladder/pfus1_advanced "
-                    "(or resolvable PFUS1 family roots via bapmos.paths)."
+                    "data/bladder/pfus1, data/bladder/pfus1_advanced or the pooled prostate "
+                    "corpus (data/prostate/pooled)."
                 )
             ed = Path(image_embedding_dir)
             if not ed.is_absolute():
@@ -239,9 +246,13 @@ class MultiOrganDataset(Dataset):
         if self._embedding_dir is not None:
             emb_pt = self._embedding_dir / f"{filename}.pt"
             sample["embedding_path"] = str(emb_pt)
-            pack = torch.load(emb_pt, map_location="cpu", weights_only=False)
-            if "image_embedding" not in pack or "original_size" not in pack:
-                raise KeyError(f"Invalid embedding file (missing keys): {emb_pt}")
+            pack = self._pack_cache.get(filename)
+            if pack is None:
+                pack = torch.load(emb_pt, map_location="cpu", weights_only=False)
+                if "image_embedding" not in pack or "original_size" not in pack:
+                    raise KeyError(f"Invalid embedding file (missing keys): {emb_pt}")
+                if self._cache_embedding_packs:
+                    self._pack_cache[filename] = pack
             sample["sam_cached_pack"] = {
                 "image_embedding": pack["image_embedding"],
                 "original_size": pack["original_size"],
