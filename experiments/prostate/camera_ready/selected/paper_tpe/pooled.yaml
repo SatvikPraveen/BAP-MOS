@@ -1,0 +1,35 @@
+# Paper configuration: TPE trial 61 of the archived prostate study
+# (bapmos_stage1_pooled_ptv_kfold_sclip, 111 completed trials), the vector reported in the
+# paper (tau, alpha, r_min, W, K) = (26, 0.108, 10, 50, 70) with validation objective
+# 0.1917 mm. Copied unchanged from the archive's configs/bapmos/stage2/selected/tpe/pooled.yaml;
+# study_db names the archived study (not shipped with this repository).
+selection_meta:
+  study_name: bapmos_stage1_pooled_ptv_kfold_sclip
+  study_db: optuna_studies/bapmos_stage1_tpe/pooled_ptv_kfold_sclip.db
+  trial_number: 61
+  objective: ptv_kfold_val_msd_mm
+  metric_note: "PTV k-fold mean MSD (5-fold, full-res). Search: BO-searched fixed\
+    \ clip τ + organ-scale ring (v6.7)"
+  value: 0.19169181189872006
+  exported_at: '2026-07-03T21:34:36.790742+00:00'
+  generation: 1
+  search_method: tpe
+  hpo_suite: bapmos_bo
+  params:
+    clip_max_mm: 26
+    alpha: 0.10884662160748368
+    r_min: 10
+    window_size: 50
+    block_size_batches: 70
+reward:
+  mode: composite_fixed_clip
+  clip_max_mm: 26.0
+  hd95_lambda: 3.0
+prompt_geometry:
+  ring_mode: scale_organ
+  alpha: 0.10884662160748368
+  r_min: 10
+bandit:
+  memory: sliding
+  window_size: 50
+  block_size_batches: 70
