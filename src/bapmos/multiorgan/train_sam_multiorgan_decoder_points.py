@@ -33,6 +33,13 @@ from ..metrics.baseline_validation_metrics import (
     multiclass_pred_uint8_from_logits,
     organ_balanced_validation_summary,
 )
+from bapmos.multiorgan.finetune_scope import (
+    apply_finetune_scope,
+    check_finetune_scope,
+    encoder_grad,
+    load_sam_model_state,
+    sam_model_state,
+)
 from bapmos.metrics.checkpoint_selection import (
     add_checkpoint_objective_cli,
     apply_checkpoint_objective_cli,
@@ -147,17 +154,13 @@ class SAMMultiOrganTrainer:
         self.model = sam_model_registry["vit_b"](checkpoint=config["sam_checkpoint"]).to(self.device)
         self.model.train()
 
-        # Freeze encoder + prompt encoder; train decoder only
-        for p in self.model.image_encoder.parameters():
-            p.requires_grad = False
-        for p in self.model.prompt_encoder.parameters():
-            p.requires_grad = False
-        for p in self.model.mask_decoder.parameters():
-            p.requires_grad = True
+        # Decoder-only by default; finetune_scope=full trains every SAM part (Table I).
+        self.finetune_scope = check_finetune_scope(config.get("finetune_scope", "decoder"))
+        apply_finetune_scope(self.model, self.finetune_scope)
 
         self.transform = ResizeLongestSide(self.model.image_encoder.img_size)
 
-        # Optimizer (decoder params only)
+        # Optimizer over the trainable parameters (decoder, or all of SAM for full)
         params = [p for p in self.model.parameters() if p.requires_grad]
         self.optimizer = optim.AdamW(params, lr=config["lr"], weight_decay=1e-4)
         if bool(config.get("flat_lr", True)):
@@ -220,7 +223,7 @@ class SAMMultiOrganTrainer:
             raise ValueError(
                 "Resume requires format_version=2 checkpoints produced by this trainer version."
             )
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        load_sam_model_state(self.model, ckpt["model_state"])
         self.optimizer.load_state_dict(ckpt["optimizer_state"])
         if bool(self.cfg.get("flat_lr", True)):
             self.scheduler = make_constant_lr_scheduler(self.optimizer)
@@ -313,7 +316,7 @@ class SAMMultiOrganTrainer:
         x, original_size = self._prepare_image(image_rgb)
         gt = self._prepare_mask(mask_multi)
 
-        with torch.no_grad():
+        with encoder_grad(self.finetune_scope, is_train):
             img_emb = self.model.image_encoder(x)
 
         prompt_result = self._points_prompt(mask_multi, original_size, str(filename), is_train=is_train)
@@ -334,7 +337,7 @@ class SAMMultiOrganTrainer:
             pts_t = self.transform.apply_coords(point_set["points"], original_size)
             pts_t = torch.as_tensor(pts_t, device=self.device, dtype=torch.float32).unsqueeze(0)
             lab_t = torch.as_tensor(point_set["labels"], device=self.device, dtype=torch.int32).unsqueeze(0)
-            with torch.no_grad():
+            with encoder_grad(self.finetune_scope, is_train):
                 sparse, dense = self.model.prompt_encoder(
                     points=(pts_t, lab_t),
                     boxes=None,
@@ -471,9 +474,7 @@ class SAMMultiOrganTrainer:
             "best_val_msd_tracked": float(self.best_val_msd),
             "val_msd_at_save": float(val_msd) if val_msd is not None else None,
             "epochs_without_improvement": int(self.epochs_without_improvement),
-            "model_state": {
-                "mask_decoder": self.model.mask_decoder.state_dict(),
-            },
+            "model_state": sam_model_state(self.model, self.finetune_scope),
             "optimizer_state": self.optimizer.state_dict(),
             "scheduler_state": self.scheduler.state_dict(),
             "config": self.cfg,
@@ -618,7 +619,7 @@ class SAMMultiOrganTrainer:
             ckpt = torch.load(best_path, map_location=self.device, weights_only=False)
         except TypeError:
             ckpt = torch.load(best_path, map_location=self.device)
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        load_sam_model_state(self.model, ckpt["model_state"])
         ei = int(ckpt.get("epoch_index", ckpt.get("epoch", 0)))
         print(f"Loaded best checkpoint from epoch {ei + 1}")
 
@@ -694,7 +695,7 @@ class SAMMultiOrganTrainer:
             ckpt = torch.load(best_path, map_location=self.device, weights_only=False)
         except TypeError:
             ckpt = torch.load(best_path, map_location=self.device)
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        load_sam_model_state(self.model, ckpt["model_state"])
         ei = int(ckpt.get("epoch_index", ckpt.get("epoch", 0)))
         print(f"Loaded best checkpoint from epoch {ei + 1}")
 
@@ -754,6 +755,12 @@ def main():
     parser.add_argument("--max_epochs", type=int, default=300)
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument(
+        "--finetune-scope",
+        choices=("decoder", "full"),
+        default="decoder",
+        help="decoder: frozen encoders (default); full: train every SAM parameter (Table I).",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num_pos_per_organ", type=int, default=1)
     parser.add_argument("--num_neg_points", type=int, default=3)
@@ -861,6 +868,7 @@ def main():
             "max_epochs": args.max_epochs,
             "batch_size": args.batch_size,
             "lr": args.lr,
+            "finetune_scope": args.finetune_scope,
             "seed": args.seed,
             "splits_subdir": splits_subdir,
             "num_pos_per_organ": args.num_pos_per_organ,

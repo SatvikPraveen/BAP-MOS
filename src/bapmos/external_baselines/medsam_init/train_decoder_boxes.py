@@ -139,6 +139,17 @@ def main() -> None:
         help="Default: 20 (PFUS1) or 40 (prostate). When resuming, overrides checkpoint if set.",
     )
     p.add_argument("--box_noise_pixels", type=int, default=10)
+    p.add_argument(
+        "--image-embedding-dir",
+        type=str,
+        default=None,
+        help="PFUS1 only: precomputed MedSAM encoder embeddings (frozen encoder).",
+    )
+    p.add_argument(
+        "--no-train-boundary-metrics",
+        action="store_true",
+        help="Skip per-epoch boundary metrics on the training set (logging only; selection uses validation).",
+    )
     p.add_argument("--wandb_project", type=str, default="bap-mos-medsam-init-box")
     p.add_argument(
         "--wandb_entity",
@@ -264,7 +275,7 @@ def main() -> None:
             "batch_size": batch_size,
             "lr": args.lr,
             "flat_lr": True,
-            "compute_train_boundary_metrics": True,
+            "compute_train_boundary_metrics": not args.no_train_boundary_metrics,
             "seed": args.seed,
             "splits_subdir": splits_subdir,
             "distance_unit": "px" if is_pfus1 else "mm",
@@ -338,8 +349,11 @@ def main() -> None:
     if ckpt_obj is not None:
         trainer.resume_from(ckpt_obj, g)
 
+    emb_kw = {}
+    if args.image_embedding_dir:
+        emb_kw = {"image_embedding_dir": args.image_embedding_dir, "cache_embedding_packs": False}
     train_loader = DataLoader(
-        MultiOrganDataset(data_root, split="train", splits_subdir=config["splits_subdir"]),
+        MultiOrganDataset(data_root, split="train", splits_subdir=config["splits_subdir"], **emb_kw),
         batch_size=config["batch_size"],
         shuffle=True,
         num_workers=4,
@@ -349,7 +363,7 @@ def main() -> None:
         collate_fn=multi_organ_collate_fn,
     )
     val_loader = DataLoader(
-        MultiOrganDataset(data_root, split="val", splits_subdir=config["splits_subdir"]),
+        MultiOrganDataset(data_root, split="val", splits_subdir=config["splits_subdir"], **emb_kw),
         batch_size=config["batch_size"],
         shuffle=False,
         num_workers=4,

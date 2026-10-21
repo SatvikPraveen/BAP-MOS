@@ -33,6 +33,13 @@ from ..metrics.baseline_validation_metrics import (
     multiclass_pred_uint8_from_logits,
     organ_balanced_validation_summary,
 )
+from bapmos.multiorgan.finetune_scope import (
+    apply_finetune_scope,
+    check_finetune_scope,
+    encoder_grad,
+    load_sam_model_state,
+    sam_model_state,
+)
 from bapmos.metrics.checkpoint_selection import (
     add_checkpoint_objective_cli,
     apply_checkpoint_objective_cli,
@@ -65,6 +72,7 @@ from ..paths import (
 )
 from ..train.training_taxonomy import PFUS1_SPLITS_SUBDIR, get_baseline_taxonomy_profile, log_baseline_taxonomy_startup
 from bapmos.method.prompt_geometry import jitter_box as bapmos_jitter_box
+from bapmos.method.prompt_geometry import perturb_box_paired
 from .dataset_multi_organ import (
     MultiOrganDataset,
     compute_per_organ_boxes,
@@ -160,17 +168,13 @@ class SAMMultiOrganTrainer:
         self.model = sam_model_registry["vit_b"](checkpoint=config["sam_checkpoint"]).to(self.device)
         self.model.train()
 
-        # Freeze encoder + prompt encoder; train decoder only
-        for p in self.model.image_encoder.parameters():
-            p.requires_grad = False
-        for p in self.model.prompt_encoder.parameters():
-            p.requires_grad = False
-        for p in self.model.mask_decoder.parameters():
-            p.requires_grad = True
+        # Decoder-only by default; finetune_scope=full trains every SAM part (Table I).
+        self.finetune_scope = check_finetune_scope(config.get("finetune_scope", "decoder"))
+        apply_finetune_scope(self.model, self.finetune_scope)
 
         self.transform = ResizeLongestSide(self.model.image_encoder.img_size)
 
-        # Optimizer (decoder params only)
+        # Optimizer over the trainable parameters (decoder, or all of SAM for full)
         params = [p for p in self.model.parameters() if p.requires_grad]
         self.optimizer = optim.AdamW(params, lr=config["lr"], weight_decay=1e-4)
         if bool(config.get("flat_lr", True)):
@@ -228,7 +232,11 @@ class SAMMultiOrganTrainer:
                 fn = filenames[i]
                 if mask_multi.max() == 0:
                     continue
-                out = self._forward_one(image_rgb, mask_multi, fn, is_train=False)
+                packs = batch.get("sam_cached_pack")
+                out = self._forward_one(
+                    image_rgb, mask_multi, fn, is_train=False,
+                    cached_pack=packs[i] if packs is not None else None,
+                )
                 if out is None:
                     continue
                 logits, gt = out
@@ -277,7 +285,7 @@ class SAMMultiOrganTrainer:
             raise ValueError(
                 "Resume requires format_version=2 checkpoints produced by this trainer version."
             )
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        load_sam_model_state(self.model, ckpt["model_state"])
         self.optimizer.load_state_dict(ckpt["optimizer_state"])
         if bool(self.cfg.get("flat_lr", True)):
             self.scheduler = make_constant_lr_scheduler(self.optimizer)
@@ -305,6 +313,15 @@ class SAMMultiOrganTrainer:
             f"[resume] Loaded epoch-boundary checkpoint after epoch {ei + 1} "
             f"(continuing from epoch index {self._resume_start_epoch})."
         )
+
+    def _check_cached_pack(self, pack, image_rgb) -> None:
+        """Refuse an embedding computed with other weights or for another image size."""
+        want = Path(str(self.cfg.get("medsam_checkpoint") or self.cfg.get("sam_checkpoint") or "")).name
+        got = Path(str(pack.get("checkpoint") or "")).name
+        if want and got and want != got:
+            raise ValueError(f"cached embedding from {got}, model uses {want}")
+        if tuple(int(v) for v in pack["original_size"]) != tuple(image_rgb.shape[:2]):
+            raise ValueError(f"cached embedding size {pack['original_size']} != image {image_rgb.shape[:2]}")
 
     def _prepare_image(self, image_rgb):
         original_size = image_rgb.shape[:2]
@@ -360,6 +377,22 @@ class SAMMultiOrganTrainer:
                         original_size,
                         rng,
                     ).tolist()
+                cid = int(self._taxonomy.organ_to_class[organ_name])
+                # Test-time robustness exports: the same paired offsets as the BAP-MOS family.
+                noise_px = int(getattr(self, "test_prompt_noise_px", 0))
+                if not is_train and noise_px > 0:
+                    box = perturb_box_paired(
+                        np.asarray(box, dtype=np.int64),
+                        noise_px,
+                        self.test_prompt_noise_mode,
+                        tuple(np.asarray(mask_multi).shape[:2]),
+                        sample_id,
+                        cid,
+                        int(getattr(self, "test_prompt_noise_seed", 0)),
+                    ).tolist()
+                log = getattr(self, "test_prompt_log", None)
+                if not is_train and log is not None:
+                    log.setdefault(sample_id, {})[str(cid)] = [int(v) for v in box]
                 boxes_list.append(box)
                 present_organs.append(organ_name)
 
@@ -371,13 +404,21 @@ class SAMMultiOrganTrainer:
         boxes_t = torch.as_tensor(boxes_t, device=self.device, dtype=torch.float32)
         return boxes_t, present_organs
 
-    def _forward_one(self, image_rgb, mask_multi, filename, is_train: bool):
+    def _forward_one(self, image_rgb, mask_multi, filename, is_train: bool, cached_pack=None):
         """Forward pass for one sample with per-organ box prompts."""
-        x, original_size = self._prepare_image(image_rgb)
         gt = self._prepare_mask(mask_multi)
-
-        with torch.no_grad():
-            img_emb = self.model.image_encoder(x)
+        if cached_pack is not None and self.finetune_scope == "decoder":
+            # Frozen encoder: the precomputed embedding of the same grayscale image replaces the
+            # encoder pass (verified equal to it up to GPU float rounding).
+            self._check_cached_pack(cached_pack, image_rgb)
+            img_emb = cached_pack["image_embedding"].to(self.device, dtype=torch.float32)
+            if img_emb.dim() == 3:
+                img_emb = img_emb.unsqueeze(0)
+            original_size = tuple(int(v) for v in cached_pack["original_size"])
+        else:
+            x, original_size = self._prepare_image(image_rgb)
+            with encoder_grad(self.finetune_scope, is_train):
+                img_emb = self.model.image_encoder(x)
 
         prompt_result = self._box_prompt(mask_multi, original_size, str(filename), is_train=is_train)
         if prompt_result is None:
@@ -393,7 +434,7 @@ class SAMMultiOrganTrainer:
         organ_masks = []
         for i in range(num_organs):
             box_i = boxes_t[i : i + 1, :]
-            with torch.no_grad():
+            with encoder_grad(self.finetune_scope, is_train):
                 sparse, dense = self.model.prompt_encoder(
                     points=None,
                     boxes=box_i.unsqueeze(1),
@@ -457,11 +498,13 @@ class SAMMultiOrganTrainer:
                 if mask_multi.max() == 0:
                     continue
 
+                packs = batch.get("sam_cached_pack")
+                pack = packs[i] if packs is not None else None
                 if train:
-                    out = self._forward_one(image_rgb, mask_multi, fn, is_train=train)
+                    out = self._forward_one(image_rgb, mask_multi, fn, is_train=train, cached_pack=pack)
                 else:
                     with torch.no_grad():
-                        out = self._forward_one(image_rgb, mask_multi, fn, is_train=train)
+                        out = self._forward_one(image_rgb, mask_multi, fn, is_train=train, cached_pack=pack)
                 if out is None:
                     continue
                 logits, gt = out
@@ -530,9 +573,7 @@ class SAMMultiOrganTrainer:
             "best_val_msd_tracked": float(self.best_val_msd),
             "val_msd_at_save": float(val_msd) if val_msd is not None else None,
             "epochs_without_improvement": int(self.epochs_without_improvement),
-            "model_state": {
-                "mask_decoder": self.model.mask_decoder.state_dict(),
-            },
+            "model_state": sam_model_state(self.model, self.finetune_scope),
             "optimizer_state": self.optimizer.state_dict(),
             "scheduler_state": self.scheduler.state_dict(),
             "config": self.cfg,
@@ -707,7 +748,7 @@ class SAMMultiOrganTrainer:
             ckpt = torch.load(best_path, map_location=self.device, weights_only=False)
         except TypeError:
             ckpt = torch.load(best_path, map_location=self.device)
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        load_sam_model_state(self.model, ckpt["model_state"])
         ei = int(ckpt.get("epoch_index", ckpt.get("epoch", 0)))
         print(f"Loaded best checkpoint from epoch {ei + 1}")
 
@@ -786,7 +827,7 @@ class SAMMultiOrganTrainer:
             ckpt = torch.load(best_path, map_location=self.device, weights_only=False)
         except TypeError:
             ckpt = torch.load(best_path, map_location=self.device)
-        self.model.mask_decoder.load_state_dict(ckpt["model_state"]["mask_decoder"])
+        load_sam_model_state(self.model, ckpt["model_state"])
         ei = int(ckpt.get("epoch_index", ckpt.get("epoch", 0)))
         print(f"Loaded best checkpoint from epoch {ei + 1}")
 
@@ -846,8 +887,25 @@ def main():
     parser.add_argument("--max_epochs", type=int, default=300)
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument(
+        "--finetune-scope",
+        choices=("decoder", "full"),
+        default="decoder",
+        help="decoder: frozen encoders (default); full: train every SAM parameter (Table I).",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--box_jitter_px", type=int, default=None, help="BAP-MOS train box jitter (0..N px per edge).")
+    parser.add_argument(
+        "--image-embedding-dir",
+        type=str,
+        default=None,
+        help="PFUS1 only: precomputed embeddings of the frozen encoder (decoder-only scope).",
+    )
+    parser.add_argument(
+        "--no-train-boundary-metrics",
+        action="store_true",
+        help="Skip per-epoch boundary metrics on the training set (logging only; selection uses validation).",
+    )
     parser.add_argument("--box_noise_pixels", type=int, default=10, help="Legacy alias for --box_jitter_px.")
     parser.add_argument("--patience", type=int, default=40)
     parser.add_argument(
@@ -952,12 +1010,13 @@ def main():
             "max_epochs": args.max_epochs,
             "batch_size": args.batch_size,
             "lr": args.lr,
+            "finetune_scope": args.finetune_scope,
             "seed": args.seed,
             "splits_subdir": splits_subdir,
             "box_jitter_px": jitter_px,
             "box_noise_pixels": jitter_px,
             "patience": args.patience,
-            "compute_train_boundary_metrics": True,
+            "compute_train_boundary_metrics": not args.no_train_boundary_metrics,
             "prompt_type": "box",
             "num_classes": _tax_profile.num_classes,
             "taxonomy": _tax_profile.taxonomy_name,
@@ -1017,11 +1076,14 @@ def main():
     print("="*60 + "\n")
 
     # Datasets
+    emb_kw = {}
+    if args.image_embedding_dir:
+        emb_kw = {"image_embedding_dir": args.image_embedding_dir, "cache_embedding_packs": False}
     train_dataset = MultiOrganDataset(
-        data_root, split="train", splits_subdir=config["splits_subdir"]
+        data_root, split="train", splits_subdir=config["splits_subdir"], **emb_kw
     )
     val_dataset = MultiOrganDataset(
-        data_root, split="val", splits_subdir=config["splits_subdir"]
+        data_root, split="val", splits_subdir=config["splits_subdir"], **emb_kw
     )
     from bapmos.paths import should_skip_in_train_global_test
 
