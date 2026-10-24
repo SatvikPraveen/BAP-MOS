@@ -135,6 +135,27 @@ METRICS_CSV_FIELDS = [
 ]
 
 
+def _ckpt_meta(path: Path) -> Optional[Dict[str, Any]]:
+    """``epoch_index`` and ``best_val_msd_mm`` of a checkpoint file (CPU, no model), or None."""
+    if not path.is_file():
+        return None
+    try:
+        ckpt = torch.load(path, map_location="cpu", weights_only=False, mmap=True)
+    except RuntimeError:  # not a zip-format file: mmap is unsupported
+        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    return {"epoch_index": int(ckpt["epoch_index"]), "best_val_msd_mm": ckpt.get("best_val_msd_mm")}
+
+
+def _last_csv_epoch(path: Path) -> int:
+    """1-based epoch of the last row of a csv whose first column is ``epoch`` (0 if none)."""
+    if not path.is_file():
+        return 0
+    lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return 0
+    return int(float(lines[-1].split(",", 1)[0]))
+
+
 class BAPMOSTrainer:
     """End-to-end BAP-MOS trainer (decoder-only SAM + per-organ UCB-Tuned bandit)."""
 
@@ -326,6 +347,11 @@ class BAPMOSTrainer:
             )
         self.best_val_msd = float("inf")
         self._epochs_without_improve = 0
+        # Committed with every last_checkpoint.pth: the epoch index of best_checkpoint.pth and
+        # this epoch's metrics row, so a resume can finish the epoch's files.
+        self._best_epoch_index: Optional[int] = None
+        self._pending_row: Optional[Dict[str, Any]] = None
+        self._resume_info: Optional[Dict[str, Any]] = None
         self.run_dir: Optional[Path] = None
         self._val_dataset_ref = None
         self._validation_probe_indices: Optional[np.ndarray] = None
@@ -846,6 +872,9 @@ class BAPMOSTrainer:
             "val_msd": val_msd,
             "best_val_msd_mm": self.best_val_msd,
             "epochs_without_improvement": int(self._epochs_without_improve),
+            # Absent from legacy checkpoints; their presence marks the committed order.
+            "best_epoch_index": self._best_epoch_index,
+            "pending_row": self._pending_row,
             "config": self.cfg,
             "tag": tag,
             "rng_state": {
@@ -879,6 +908,9 @@ class BAPMOSTrainer:
             best = ckpt.get("best_val_msd")
         self.best_val_msd = float(best) if best is not None else float("inf")
         self._epochs_without_improve = int(ckpt.get("epochs_without_improvement", 0))
+        legacy = "best_epoch_index" not in ckpt
+        self._best_epoch_index = None if legacy else ckpt["best_epoch_index"]
+        self._pending_row = ckpt.get("pending_row")
         rs = ckpt.get("rng_state")
         if restore_rng and rs:
             torch_state = rs["torch"]
@@ -907,6 +939,8 @@ class BAPMOSTrainer:
         if ei < 0:
             raise ValueError("Checkpoint missing epoch_index.")
         start = ei + 1
+        # train() reconciles the run folder with this checkpoint before the next epoch.
+        self._resume_info = {"epoch_index": ei, "legacy": legacy}
         logger.info(
             "[resume] Loaded checkpoint after epoch index %d; continuing from %d | best_val_msd_mm=%.4f",
             ei,
@@ -914,6 +948,59 @@ class BAPMOSTrainer:
             self.best_val_msd,
         )
         return start
+
+    def _materialize(self, run_dir: Path, epoch: int, *, improved: bool) -> None:
+        """Write the files derived from the committed state of 0-based ``epoch`` (idempotent:
+        the metrics row is appended only when the csv's last epoch is below ``epoch + 1``)."""
+        if improved:
+            self.save_checkpoint(run_dir / "best_checkpoint.pth", self.best_val_msd, tag="best")
+        metrics_path = run_dir / "metrics.csv"
+        if self._pending_row is not None and _last_csv_epoch(metrics_path) < epoch + 1:
+            with open(metrics_path, "a", newline="", encoding="utf-8") as f:
+                csv.DictWriter(f, fieldnames=METRICS_CSV_FIELDS).writerow(self._pending_row)
+
+    def _reconcile_after_resume(self, run_dir: Path) -> None:
+        """Make the run folder and the selection state agree with the resumed checkpoint.
+
+        A checkpoint of the fixed trainer carries the committed selection state: the files of
+        its epoch are finished and checked against it. A legacy checkpoint (written before the
+        epoch's selection update) is one epoch stale; its best value and patience counter are
+        recomputed from ``best_checkpoint.pth``, whose epoch is the last improving one.
+        """
+        info = self._resume_info
+        if not info:
+            return
+        e = int(info["epoch_index"])
+        self.epoch = e
+        best_path = run_dir / "best_checkpoint.pth"
+        best_meta = _ckpt_meta(best_path)
+        if not info["legacy"]:
+            b = self._best_epoch_index
+            redo = b == e and (best_meta is None or best_meta["epoch_index"] != e)
+            self._materialize(run_dir, e, improved=redo)
+            meta = _ckpt_meta(best_path)
+            if b is not None and (meta is None or meta["epoch_index"] != b):
+                raise RuntimeError(f"{best_path}: epoch index {meta and meta['epoch_index']} != committed {b}")
+            return
+        if best_meta is None:  # no epoch has improved yet
+            self._epochs_without_improve += 1
+            self._best_epoch_index = None
+        else:
+            b = best_meta["epoch_index"]
+            if b > e:
+                raise RuntimeError(f"{best_path} (epoch index {b}) is newer than the resume point ({e})")
+            self.best_val_msd = float(best_meta["best_val_msd_mm"])
+            self._epochs_without_improve = e - b
+            self._best_epoch_index = b
+        if _last_csv_epoch(run_dir / "metrics.csv") < e + 1:
+            logger.warning("[resume] metrics.csv has no row for epoch %d (legacy checkpoint)", e + 1)
+        logger.warning(
+            "[resume] legacy checkpoint reconciled from best_checkpoint.pth: best=%.4f (epoch %s) counter=%d/%d",
+            self.best_val_msd,
+            None if self._best_epoch_index is None else self._best_epoch_index + 1,
+            self._epochs_without_improve,
+            self.patience,
+        )
 
     def train(
         self,
@@ -938,13 +1025,23 @@ class BAPMOSTrainer:
             with open(metrics_path, "w", newline="", encoding="utf-8") as f:
                 csv.DictWriter(f, fieldnames=METRICS_CSV_FIELDS).writeheader()
 
+        if start_epoch > 0:
+            self._reconcile_after_resume(run_dir)
+        # A job stopped after the early-stopping break resumes here: no further epoch.
+        stopped = start_epoch > 0 and self._epochs_without_improve >= self.patience
+        if stopped:
+            logger.info(
+                "[resume] patience already exhausted (%d/%d); no further epochs.",
+                self._epochs_without_improve,
+                self.patience,
+            )
         if start_epoch >= self.max_epochs:
             logger.info(
                 "[resume] start_epoch=%d >= max_epochs=%d; skipping training loop.",
                 start_epoch,
                 self.max_epochs,
             )
-        for epoch in range(start_epoch, self.max_epochs):
+        for epoch in range(start_epoch, start_epoch if stopped else self.max_epochs):
             self.epoch = epoch
             t0 = time.time()
             train_loss, train_prompt_counts = self.train_epoch(train_loader, val_loader)
@@ -985,11 +1082,11 @@ class BAPMOSTrainer:
             lr = self.optimizer.param_groups[0]["lr"]
             epoch_no = epoch + 1
 
-            self.save_checkpoint(run_dir / "last_checkpoint.pth", float(val_msd or self.best_val_msd))
-
-            if val_msd is not None and val_msd < self.best_val_msd - self.val_msd_min_delta:
+            # 1. Decide the selection state of this epoch (memory only).
+            improved = val_msd is not None and val_msd < self.best_val_msd - self.val_msd_min_delta
+            if improved:
                 self.best_val_msd = float(val_msd)
-                self.save_checkpoint(run_dir / "best_checkpoint.pth", self.best_val_msd, tag="best")
+                self._best_epoch_index = epoch
                 self._epochs_without_improve = 0
                 logger.info("New best val_msd_mm: %.4f", self.best_val_msd)
             else:
@@ -1020,8 +1117,16 @@ class BAPMOSTrainer:
                 "ablation_id": self.ablation_id,
                 "lr": lr,
             }
-            with open(metrics_path, "a", newline="", encoding="utf-8") as f:
-                csv.DictWriter(f, fieldnames=METRICS_CSV_FIELDS).writerow(row)
+            self._pending_row = row
+
+            # 2. Commit: last_checkpoint.pth is written once every value it carries is final,
+            # so a job stopped from here on resumes as the uninterrupted run would continue.
+            self.save_checkpoint(
+                run_dir / "last_checkpoint.pth", float(val_msd) if val_msd is not None else self.best_val_msd
+            )
+
+            # 3. Files derived from the committed state (finished by _reconcile_after_resume).
+            self._materialize(run_dir, epoch, improved=improved)
 
             extra: Dict[str, Any] = {
                 "reward/threshold_mm": thresh,

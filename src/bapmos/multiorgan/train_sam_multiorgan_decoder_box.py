@@ -152,6 +152,28 @@ def multi_class_dice_from_logits(logits, gt_multi, num_classes=5):
 # -----------------------------
 # Trainer
 # -----------------------------
+
+
+def _ckpt_meta(path: Path) -> Optional[dict]:
+    """``epoch_index`` and the tracked best of a checkpoint file (CPU, no model), or None."""
+    if not path.is_file():
+        return None
+    try:
+        ckpt = torch.load(path, map_location="cpu", weights_only=False, mmap=True)
+    except RuntimeError:  # not a zip-format file: mmap is unsupported
+        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    return {"epoch_index": int(ckpt["epoch_index"]), "best": ckpt.get("best_val_msd_tracked")}
+
+
+def _last_csv_epoch(path: Path) -> int:
+    """1-based epoch of the last row of a csv whose first column is ``epoch`` (0 if none)."""
+    if not path.is_file():
+        return 0
+    lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return 0
+    return int(float(lines[-1].split(",", 1)[0]))
+
 class SAMMultiOrganTrainer:
     """SAM ViT-B decoder-only multi-organ trainer with one GT-derived box prompt per present organ.
 
@@ -205,6 +227,11 @@ class SAMMultiOrganTrainer:
             else None
         )
         self._resume_start_epoch = 0
+        # Committed with every last_checkpoint.pth: the epoch index of best_checkpoint.pth and
+        # this epoch's metrics row, so a resume can finish the epoch's files.
+        self._best_epoch_index: Optional[int] = None
+        self._pending_row: Optional[dict] = None
+        self._resume_legacy = False
         self._train_generator_ref = None
         self.compute_train_boundary_metrics = bool(
             config.get("compute_train_boundary_metrics", True)
@@ -298,6 +325,10 @@ class SAMMultiOrganTrainer:
         self.epochs_without_improvement = int(ckpt.get("epochs_without_improvement", 0))
         ei = int(ckpt.get("epoch_index", 0))
         self._resume_start_epoch = ei + 1
+        # train_loop reconciles the run folder with this checkpoint before the next epoch.
+        self._resume_legacy = "best_epoch_index" not in ckpt
+        self._best_epoch_index = None if self._resume_legacy else ckpt["best_epoch_index"]
+        self._pending_row = ckpt.get("pending_row")
 
         rs = ckpt.get("rng_state")
         if rs:
@@ -573,6 +604,9 @@ class SAMMultiOrganTrainer:
             "best_val_msd_tracked": float(self.best_val_msd),
             "val_msd_at_save": float(val_msd) if val_msd is not None else None,
             "epochs_without_improvement": int(self.epochs_without_improvement),
+            # Absent from legacy checkpoints; their presence marks the committed order.
+            "best_epoch_index": self._best_epoch_index,
+            "pending_row": self._pending_row,
             "model_state": sam_model_state(self.model, self.finetune_scope),
             "optimizer_state": self.optimizer.state_dict(),
             "scheduler_state": self.scheduler.state_dict(),
@@ -582,7 +616,57 @@ class SAMMultiOrganTrainer:
         gen = getattr(self, "_train_generator_ref", None)
         if gen is not None:
             ckpt["train_generator_state"] = gen.get_state()
-        torch.save(ckpt, path)
+        tmp = Path(path).with_suffix(Path(path).suffix + ".tmp")
+        torch.save(ckpt, tmp)
+        tmp.replace(path)
+
+    def _materialize(self, run_dir: Path, epoch: int, *, improved: bool, val_msd) -> None:
+        """Write the files derived from the committed state of 0-based ``epoch`` (idempotent:
+        the metrics row is appended only when the csv's last epoch is below ``epoch + 1``)."""
+        if improved:
+            self.save_checkpoint(run_dir / "best_checkpoint.pth", val_msd=val_msd)
+        csv_path = run_dir / "metrics.csv"
+        if self._pending_row is not None and _last_csv_epoch(csv_path) < epoch + 1:
+            with open(csv_path, "a", newline="") as f:
+                csv.DictWriter(f, fieldnames=BASELINE_METRICS_CSV_FIELDS).writerow(self._pending_row)
+
+    def _reconcile_after_resume(self, run_dir: Path) -> None:
+        """Make the run folder and the selection state agree with the resumed checkpoint.
+
+        A checkpoint of the fixed trainer carries the committed selection state: the files of
+        its epoch are finished and checked against it. A legacy checkpoint (written before the
+        epoch's selection update) is one epoch stale; its best value and patience counter are
+        recomputed from ``best_checkpoint.pth``, whose epoch is the last improving one.
+        """
+        e = self._resume_start_epoch - 1
+        self.current_epoch = e
+        best_path = run_dir / "best_checkpoint.pth"
+        best_meta = _ckpt_meta(best_path)
+        if not self._resume_legacy:
+            b = self._best_epoch_index
+            if b == e and (best_meta is None or best_meta["epoch_index"] != e):
+                self._materialize(run_dir, e, improved=True, val_msd=self.best_val_msd)
+            else:
+                self._materialize(run_dir, e, improved=False, val_msd=None)
+            meta = _ckpt_meta(best_path)
+            if b is not None and (meta is None or meta["epoch_index"] != b):
+                raise RuntimeError(f"{best_path}: epoch index {meta and meta['epoch_index']} != committed {b}")
+            return
+        if best_meta is None:  # no epoch has improved yet
+            self.epochs_without_improvement += 1
+            self._best_epoch_index = None
+        else:
+            b = best_meta["epoch_index"]
+            if b > e:
+                raise RuntimeError(f"{best_path} (epoch index {b}) is newer than the resume point ({e})")
+            self.best_val_msd = float(best_meta["best"])
+            self.epochs_without_improvement = e - b
+            self._best_epoch_index = b
+        print(
+            f"[resume] legacy checkpoint reconciled from best_checkpoint.pth: best={self.best_val_msd:.4f} "
+            f"(epoch {None if self._best_epoch_index is None else self._best_epoch_index + 1}) "
+            f"counter={self.epochs_without_improvement}/{self.patience}"
+        )
 
     def train_loop(self, train_loader, val_loader):
         """Train for up to ``max_epochs`` with validation-based checkpointing and early stopping.
@@ -602,7 +686,14 @@ class SAMMultiOrganTrainer:
 
         organ_labels = list(self._taxonomy.evaluator_organ_labels)
         start_epoch = int(getattr(self, "_resume_start_epoch", 0))
-        for epoch in range(start_epoch, self.cfg["max_epochs"]):
+        if start_epoch > 0:
+            self._reconcile_after_resume(run_dir)
+        # A job stopped after the early-stopping epoch resumes here: no further epoch.
+        stopped = start_epoch > 0 and self.epochs_without_improvement >= self.patience
+        if stopped:
+            print(f"[resume] patience already exhausted ({self.epochs_without_improvement}/{self.patience}); "
+                  "no further epochs.")
+        for epoch in range(start_epoch, start_epoch if stopped else self.cfg["max_epochs"]):
             self.current_epoch = epoch
             t0 = time.time()
 
@@ -648,13 +739,14 @@ class SAMMultiOrganTrainer:
             )
             lr = self.optimizer.param_groups[0]["lr"]
 
-            self.save_checkpoint(run_dir / "last_checkpoint.pth", val_msd=val_msd)
-
+            # 1. Decide the selection state of this epoch (memory only).
+            improved = False
             if val_loss == 0.0 and val_dice == 0.0:
                 print("WARNING: val had 0 valid samples this epoch")
             elif is_better_checkpoint(val_msd, self.best_val_msd, min_delta=self.val_msd_min_delta):
+                improved = True
                 self.best_val_msd = float(val_msd)
-                self.save_checkpoint(run_dir / "best_checkpoint.pth", val_msd=val_msd)
+                self._best_epoch_index = epoch
                 self.epochs_without_improvement = 0
                 print(f"✓ New best {self._checkpoint_objective.metric}: {val_msd:.4f} mm")
             else:
@@ -664,11 +756,6 @@ class SAMMultiOrganTrainer:
                     f"No MSD improvement for {self.epochs_without_improvement}/{self.patience} epochs "
                     f"(val_msd={msd_s} mm, best={self.best_val_msd:.4f} mm)"
                 )
-
-                if self.epochs_without_improvement >= self.patience:
-                    print(f"Early stopping at epoch {epoch + 1}")
-                    print(f"Best val_msd: {self.best_val_msd:.4f} mm")
-                    break
 
             row = {
                 "epoch": epoch + 1,
@@ -696,8 +783,17 @@ class SAMMultiOrganTrainer:
                 "best_val_msd": self.best_val_msd,
                 "lr": lr,
             }
-            with open(csv_path, "a", newline="") as f:
-                csv.DictWriter(f, fieldnames=BASELINE_METRICS_CSV_FIELDS).writerow(row)
+            self._pending_row = row
+            # The scheduler steps before the commit so that a resume continues with the next
+            # epoch's learning rate (the row above has recorded this epoch's).
+            self.scheduler.step()
+
+            # 2. Commit: last_checkpoint.pth is written once every value it carries is final,
+            # so a job stopped from here on resumes as the uninterrupted run would continue.
+            self.save_checkpoint(run_dir / "last_checkpoint.pth", val_msd=val_msd)
+
+            # 3. Files derived from the committed state (finished by _reconcile_after_resume).
+            self._materialize(run_dir, epoch, improved=improved, val_msd=val_msd)
 
             log_dict = build_epoch_wandb_log(
                 epoch=epoch + 1,
@@ -735,7 +831,11 @@ class SAMMultiOrganTrainer:
                 f"LR={lr:.2e} | {time.time()-t0:.1f}s"
             )
 
-            self.scheduler.step()
+            # The stopping epoch now has its metrics row and log too (it used to break before them).
+            if self.epochs_without_improvement >= self.patience:
+                print(f"Early stopping at epoch {epoch + 1}")
+                print(f"Best val_msd: {self.best_val_msd:.4f} mm")
+                break
 
     def evaluate_test_once(self, test_loader):
         """Evaluate on test set using best checkpoint."""
