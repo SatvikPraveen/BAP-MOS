@@ -28,7 +28,7 @@ ipykernel==6.31.0
 ipywidgets==8.1.8
 notebook==7.6.3
 nbformat==5.10.4
-nbconvert==7.17.1
+nbconvert==7.17.2
 nbclient==0.10.2
 plotly==6.5.2
 kaleido==1.2.0
