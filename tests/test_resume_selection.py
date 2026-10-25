@@ -1,6 +1,7 @@
 """Resuming a trainer reproduces the uninterrupted run (checkpoint selection and early stopping).
 
-Drives the real epoch loops of ``BAPMOSTrainer.train`` and ``SAMMultiOrganTrainer.train_loop``
+Drives the real epoch loops of ``BAPMOSTrainer.train``, ``SAMMultiOrganTrainer.train_loop`` and
+``UNetMultiOrganTrainer.train_loop``
 (selection, save_checkpoint, resume, reconcile) with the training and validation passes stubbed:
 a scripted validation objective per epoch and a random step on a tiny decoder, so the kept
 checkpoints are distinguishable and the RNG restore is exercised. Each run is stopped at every
@@ -335,3 +336,104 @@ def test_box_legacy_checkpoint_is_reconciled(tmp_path, monkeypatch, box_referenc
     _legacy(tmp_path / "run" / "last_checkpoint.pth", epoch, "best_val_msd_tracked", "epochs_without_improvement")
     assert _run_box(_box(tmp_path, monkeypatch), resume=True)
     assert _box_state(tmp_path / "run") == box_reference
+
+
+# -- U-Net external baseline --------------------------------------------------------------
+
+
+def _unet(tmp_path, monkeypatch, kill=None):
+    import bapmos.external_baselines.unet.train_multiclass as mod
+
+    torch.manual_seed(0)
+    np.random.seed(0)
+    monkeypatch.setattr(mod.smp, "Unet", lambda **k: torch.nn.Linear(4, 4))  # no ImageNet download
+    monkeypatch.setattr(mod, "get_baseline_taxonomy_profile",
+                        lambda root: SimpleNamespace(num_classes=3, evaluator_organ_labels=["Bladder", "Rectum"]))
+    monkeypatch.setattr(mod, "log_baseline_taxonomy_startup", lambda *a, **k: None)
+    cfg = {
+        "data_root": "data/none", "num_classes": 3, "lr": 1e-3, "max_epochs": 40, "patience": PATIENCE,
+        "run_dir": str(tmp_path / "run"), "compute_train_boundary_metrics": False, "flat_lr": False,
+    }
+    tr = mod.UNetMultiOrganTrainer(cfg)
+
+    def run_epoch(loader, train):
+        if train:
+            # Seeded by epoch: this trainer does not checkpoint the RNG (resumed data order is not
+            # bit-identical), so the stub's step must not depend on it; selection is under test.
+            g = torch.Generator().manual_seed(1000 + tr.current_epoch)
+            with torch.no_grad():
+                for p in tr.model.parameters():
+                    p.add_(0.01 * torch.randn(p.shape, generator=g) + float(torch.rand(1, generator=g)))
+            tr.optimizer.step()
+            return 0.1, 0.5, None, None
+        return 0.2, 0.5, {}, object()
+
+    def scores(*a, **k):
+        if kill == (tr.current_epoch, "after_validation"):
+            raise _Interrupt
+        return SimpleNamespace(primary_msd=SCORES[tr.current_epoch], organ_balanced_hd95=None,
+                               organ_balanced_dice=None, ptv_hd95="", ptv_dice="")
+
+    tr.run_epoch = run_epoch
+    monkeypatch.setattr(mod, "validation_checkpoint_scores", scores)
+    monkeypatch.setattr(mod, "per_organ_wandb_dict", lambda *a, **k: {})
+    monkeypatch.setattr(mod, "build_epoch_wandb_log", lambda **k: {})
+    monkeypatch.setattr(mod, "log_epoch_wandb", lambda d: None)
+    if kill is not None:
+        _arm_kill(tr, mod, monkeypatch, *kill, epoch_attr="current_epoch", log_attr="log_epoch_wandb")
+    return tr
+
+
+def _run_unet(tr, resume=False):
+    from pathlib import Path
+
+    run_dir = Path(tr.cfg["run_dir"])
+    start = 0
+    if resume:
+        start = tr.apply_checkpoint(torch.load(run_dir / "last_checkpoint.pth", weights_only=False))
+    try:
+        tr.train_loop([], [], start_epoch=start)
+    except _Interrupt:
+        return False
+    return True
+
+
+def _unet_state(run_dir):
+    best = torch.load(run_dir / "best_checkpoint.pth", weights_only=False)
+    last = torch.load(run_dir / "last_checkpoint.pth", weights_only=False)
+    return {"best_epoch_index": best["epoch"], "best_weights": [w.tolist() for w in best["model_state"].values()],
+            "metrics": (run_dir / "metrics.csv").read_text(), "scheduler": last["scheduler_state"]["last_epoch"]}
+
+
+@pytest.fixture(scope="module")
+def unet_reference(tmp_path_factory):
+    mp = pytest.MonkeyPatch()
+    root = tmp_path_factory.mktemp("unetref")
+    assert _run_unet(_unet(root, mp))
+    state = _unet_state(root / "run")
+    mp.undo()
+    return state
+
+
+def test_unet_reference_selects_and_stops_as_specified(unet_reference):
+    epochs = [int(r["epoch"]) for r in csv.DictReader(unet_reference["metrics"].splitlines())]
+    # The stopping epoch has its row (it used to be dropped).
+    assert epochs == list(range(1, STOP + 1)) and unet_reference["best_epoch_index"] == BEST - 1
+
+
+@pytest.mark.parametrize("point", POINTS)
+@pytest.mark.parametrize("epoch", range(STOP))
+def test_unet_resume_equals_uninterrupted(tmp_path, monkeypatch, unet_reference, epoch, point):
+    if point == "after_validation" and epoch == 0:
+        pytest.skip("stopped before the first commit: no checkpoint to resume from")
+    assert not _run_unet(_unet(tmp_path, monkeypatch, kill=(epoch, point)))
+    assert _run_unet(_unet(tmp_path, monkeypatch), resume=True)
+    assert _unet_state(tmp_path / "run") == unet_reference
+
+
+@pytest.mark.parametrize("epoch", range(1, STOP))
+def test_unet_legacy_checkpoint_is_reconciled(tmp_path, monkeypatch, unet_reference, epoch):
+    assert not _run_unet(_unet(tmp_path, monkeypatch, kill=(epoch, "after_rows")))
+    _legacy(tmp_path / "run" / "last_checkpoint.pth", epoch, "best_val_msd", "epochs_without_improvement")
+    assert _run_unet(_unet(tmp_path, monkeypatch), resume=True)
+    assert _unet_state(tmp_path / "run") == unet_reference
