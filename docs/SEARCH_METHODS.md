@@ -6,7 +6,7 @@ defined in `src/bapmos/hpo/search_space.py`):
 | Key | Role | Range |
 |-----|------|-------|
 | `clip_max_mm` | Reward clip τ | integer in [5, 30] |
-| `alpha` | Ring scale α | [0.05, 0.15] |
+| `alpha` | Ring scale β (config key `alpha`) | [0.05, 0.15] |
 | `r_min` | Ring floor r_min (px) | integer in [2, 20] |
 | `window_size` | Sliding reward window W | {20, 25, …, 100} |
 | `block_size_batches` | Decision block K (batches) | {20, 25, …, 100} |
